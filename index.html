@@ -10,11 +10,724 @@
 </head>
 <body>
   <div id="root"></div>
-  <script type="text/babel">
-    // ← paste your component code here
-    // make sure the bottom reads:
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<App />);
+  <script type="text/babel">import { useState, useCallback } from "react";
+
+const COLORS = {
+  navy900: "#131f2e", navy800: "#1a2b3d", navy700: "#243a50",
+  teal700: "#007a8a", teal600: "#00889b", teal500: "#0097a9",
+  teal400: "#1eafc2", teal200: "#8ed5e0", teal50: "#e8f6f9",
+  lime600: "#6fa62d", lime500: "#8cc63f", lime100: "#ecf5de",
+  gray900: "#1a1a1a", gray700: "#3a3f4a", gray600: "#555b66",
+  gray500: "#6b7280", gray400: "#9ca3af", gray300: "#ced2d8",
+  gray200: "#e2e5ea", gray100: "#f0f2f5", gray50: "#f8f9fb",
+  red600: "#c0392b", red100: "#fde8e8", amber600: "#d4a017",
+  white: "#ffffff",
+};
+
+const WOUND_POINTS = [
+  { id: "head-top",    label: "Head (Top)",          x: 50,   y: 1.9  },
+  { id: "head-front",  label: "Head (Front)",         x: 50,   y: 8.1  },
+  { id: "neck",        label: "Neck",                 x: 50,   y: 14.4 },
+  { id: "r-shoulder",  label: "Right Shoulder",       x: 37.5, y: 17.7 },
+  { id: "l-shoulder",  label: "Left Shoulder",        x: 62.5, y: 17.7 },
+  { id: "r-uchest",    label: "Right Upper Chest",    x: 44.4, y: 21.4 },
+  { id: "l-uchest",    label: "Left Upper Chest",     x: 55.6, y: 21.4 },
+  { id: "r-uarm",      label: "Right Upper Arm",      x: 29,   y: 21.4 },
+  { id: "l-uarm",      label: "Left Upper Arm",       x: 71,   y: 21.4 },
+  { id: "r-abd",       label: "Right Abdomen",        x: 44.4, y: 30.2 },
+  { id: "l-abd",       label: "Left Abdomen",         x: 55.6, y: 30.2 },
+  { id: "r-farm",      label: "Right Forearm",        x: 14.7, y: 30   },
+  { id: "l-farm",      label: "Left Forearm",         x: 85.3, y: 30   },
+  { id: "r-labd",      label: "Right Lower Abdomen",  x: 43.8, y: 39.5 },
+  { id: "l-labd",      label: "Left Lower Abdomen",   x: 56.2, y: 39.5 },
+  { id: "r-hand",      label: "Right Hand",           x: 8.1,  y: 36.7 },
+  { id: "l-hand",      label: "Left Hand",            x: 91.9, y: 36.7 },
+  { id: "r-hip",       label: "Right Hip",            x: 45,   y: 47   },
+  { id: "l-hip",       label: "Left Hip",             x: 55,   y: 47   },
+  { id: "r-uthigh",    label: "Right Upper Thigh",    x: 44.7, y: 58.1 },
+  { id: "l-uthigh",    label: "Left Upper Thigh",     x: 55.3, y: 58.1 },
+  { id: "r-mthigh",    label: "Right Mid Thigh",      x: 44.1, y: 67.4 },
+  { id: "l-mthigh",    label: "Left Mid Thigh",       x: 55.9, y: 67.4 },
+  { id: "r-knee",      label: "Right Knee",           x: 43.8, y: 73.5 },
+  { id: "l-knee",      label: "Left Knee",            x: 56.2, y: 73.5 },
+  { id: "r-shin",      label: "Right Shin",           x: 43.4, y: 82.6 },
+  { id: "l-shin",      label: "Left Shin",            x: 56.6, y: 82.6 },
+  { id: "r-ankle",     label: "Right Ankle",          x: 43.1, y: 91.2 },
+  { id: "l-ankle",     label: "Left Ankle",           x: 56.9, y: 91.2 },
+];
+
+const STEPS = ["Tips", "Location", "Upload", "Review"];
+
+const emptyImage = () => ({ file: null, dataUrl: null, name: "", woundName: "", age: "", date: "", reopened: null, details: "" });
+
+// ── Shared UI ──────────────────────────────────────────────────────────────
+
+const Btn = ({ children, variant = "primary", disabled, onClick, style }) => {
+  const base = {
+    flex: 1, padding: "13px", borderRadius: 24, fontFamily: "inherit",
+    fontSize: 14, fontWeight: 600, cursor: disabled ? "not-allowed" : "pointer",
+    textAlign: "center", border: "none", transition: "all 0.15s",
+    letterSpacing: "0.3px", textTransform: "uppercase",
+  };
+  const variants = {
+    primary: { background: disabled ? COLORS.gray200 : COLORS.teal500, color: disabled ? COLORS.gray400 : COLORS.white, border: `2px solid ${disabled ? COLORS.gray200 : COLORS.teal500}` },
+    outline: { background: disabled ? COLORS.gray200 : COLORS.white, color: disabled ? COLORS.gray400 : COLORS.teal600, border: `2px solid ${disabled ? COLORS.gray200 : COLORS.teal500}` },
+  };
+  return <button style={{ ...base, ...variants[variant], ...style }} disabled={disabled} onClick={onClick}>{children}</button>;
+};
+
+const HelpBar = () => (
+  <div style={{ background: COLORS.navy800, color: "rgba(255,255,255,0.8)", textAlign: "center", padding: 10, fontSize: 12, flexShrink: 0 }}>
+    Need help? Call your pharmacist:{" "}
+    <a href="tel:8336706464" style={{ color: COLORS.teal200, textDecoration: "none", fontWeight: 600 }}>833-670-6464</a>
+  </div>
+);
+
+const Footer = ({ children }) => (
+  <div style={{ padding: "12px 20px", display: "flex", gap: 10, borderTop: `1px solid ${COLORS.gray200}`, flexShrink: 0, background: COLORS.white }}>
+    {children}
+  </div>
+);
+
+const Label = ({ children }) => (
+  <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: COLORS.gray600, marginBottom: 5 }}>{children}</label>
+);
+
+const Input = ({ type = "text", value, onChange, placeholder, min, max }) => (
+  <input
+    type={type} value={value} onChange={e => onChange(e.target.value)}
+    placeholder={placeholder} min={min} max={max}
+    style={{
+      width: "100%", padding: "9px 11px", border: `1px solid ${COLORS.gray300}`,
+      borderRadius: 6, fontFamily: "inherit", fontSize: 13, color: COLORS.gray900,
+      outline: "none", background: COLORS.white,
+    }}
+    onFocus={e => { e.target.style.borderColor = COLORS.teal500; e.target.style.boxShadow = `0 0 0 3px rgba(0,151,169,0.12)`; }}
+    onBlur={e => { e.target.style.borderColor = COLORS.gray300; e.target.style.boxShadow = "none"; }}
+  />
+);
+
+const RadioGroup = ({ name, value, onChange }) => (
+  <div style={{ display: "flex", border: `1px solid ${COLORS.gray300}`, borderRadius: 6, overflow: "hidden" }}>
+    {["Yes", "No"].map(opt => {
+      const v = opt === "Yes" ? "y" : "n";
+      const active = value === v;
+      return (
+        <label key={v} style={{
+          flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
+          padding: "8px 12px", fontSize: 13, color: active ? COLORS.teal700 : COLORS.gray600,
+          cursor: "pointer", background: active ? COLORS.teal50 : COLORS.white,
+          fontWeight: active ? 600 : 500,
+          borderRight: opt === "Yes" ? `1px solid ${COLORS.gray300}` : "none",
+        }}>
+          <input type="radio" name={name} value={v} checked={active} onChange={() => onChange(v)} style={{ display: "none" }} />
+          {opt}
+        </label>
+      );
+    })}
+  </div>
+);
+
+// ── Step 1: Tips ───────────────────────────────────────────────────────────
+
+const StepTips = ({ onNext }) => (
+  <>
+    <div style={{ padding: "16px 20px 4px", flexShrink: 0 }}>
+      <h2 style={{ fontSize: 20, fontWeight: 700, color: COLORS.navy800 }}>Upload Progress Photos</h2>
+    </div>
+    <p style={{ padding: "4px 20px 14px", fontSize: 13, color: COLORS.gray500, lineHeight: 1.4 }}>
+      Review these tips, then continue to select wound locations.
+    </p>
+    <div style={{ padding: "0 20px 20px", flex: 1, overflowY: "auto" }}>
+      <p style={{ fontSize: 13.5, color: COLORS.gray600, marginBottom: 14, lineHeight: 1.6 }}>
+        Upload clear images of your wounds so you can track healing over time and share updates with your care team.
+      </p>
+      <p style={{ fontWeight: 600, fontSize: 13.5, color: COLORS.navy800, marginBottom: 10 }}>Tips for best results:</p>
+      <ul style={{ listStyle: "none", marginBottom: 16 }}>
+        {[
+          "Use good, even lighting — avoid harsh shadows",
+          "Hold your camera 6–12 inches from the wound",
+          "Include a size reference (coin, ruler) if possible",
+          "Keep the wound centered in the frame",
+          "Take multiple angles for the same wound",
+        ].map((tip, i) => (
+          <li key={i} style={{ fontSize: 13, color: COLORS.gray600, padding: "6px 0 6px 24px", position: "relative", lineHeight: 1.5 }}>
+            <span style={{ position: "absolute", left: 4, top: 12, width: 10, height: 10, borderRadius: "50%", background: COLORS.lime500, display: "block" }} />
+            {tip}
+          </li>
+        ))}
+      </ul>
+      <div style={{ background: COLORS.gray50, border: `1px solid ${COLORS.gray200}`, borderRadius: 8, padding: "12px 14px", fontSize: 12, color: COLORS.gray600, lineHeight: 1.7 }}>
+        <strong style={{ color: COLORS.gray700 }}>Accepted formats:</strong> JPEG, PNG, HEIC/HEIF, WebP<br />
+        <strong style={{ color: COLORS.gray700 }}>Max file size:</strong> 5 MB per image
+      </div>
+    </div>
+    <Footer>
+      <Btn variant="outline" disabled>‹ Previous</Btn>
+      <Btn onClick={onNext}>Next ›</Btn>
+    </Footer>
+    <HelpBar />
+  </>
+);
+
+// ── Step 2: Body Map ───────────────────────────────────────────────────────
+
+const BodyMap = ({ selected, onToggle }) => {
+  const [hovered, setHovered] = useState(null);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+      <div style={{ position: "relative", width: "100%", maxWidth: 360, aspectRatio: "320 / 430" }}>
+        <svg viewBox="0 0 320 430" xmlns="http://www.w3.org/2000/svg" style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}>
+          <ellipse cx="160" cy="30" rx="24" ry="28" fill="#c0c8d2"/>
+          <line x1="160" y1="56" x2="160" y2="68" stroke="#c0c8d2" strokeWidth="20" strokeLinecap="round"/>
+          <rect x="125" y="65" width="70" height="128" rx="16" fill="#c0c8d2"/>
+          <ellipse cx="160" cy="198" rx="36" ry="22" fill="#c0c8d2"/>
+          <line x1="122" y1="76" x2="64" y2="108" stroke="#c0c8d2" strokeWidth="24" strokeLinecap="round"/>
+          <line x1="64" y1="108" x2="30" y2="150" stroke="#c0c8d2" strokeWidth="20" strokeLinecap="round"/>
+          <ellipse cx="26" cy="158" rx="12" ry="12" fill="#c0c8d2"/>
+          <line x1="198" y1="76" x2="256" y2="108" stroke="#c0c8d2" strokeWidth="24" strokeLinecap="round"/>
+          <line x1="256" y1="108" x2="290" y2="150" stroke="#c0c8d2" strokeWidth="20" strokeLinecap="round"/>
+          <ellipse cx="294" cy="158" rx="12" ry="12" fill="#c0c8d2"/>
+          <line x1="146" y1="206" x2="140" y2="310" stroke="#c0c8d2" strokeWidth="30" strokeLinecap="round"/>
+          <line x1="140" y1="310" x2="138" y2="392" stroke="#c0c8d2" strokeWidth="24" strokeLinecap="round"/>
+          <ellipse cx="137" cy="408" rx="13" ry="7" fill="#c0c8d2"/>
+          <line x1="174" y1="206" x2="180" y2="310" stroke="#c0c8d2" strokeWidth="30" strokeLinecap="round"/>
+          <line x1="180" y1="310" x2="182" y2="392" stroke="#c0c8d2" strokeWidth="24" strokeLinecap="round"/>
+          <ellipse cx="183" cy="408" rx="13" ry="7" fill="#c0c8d2"/>
+        </svg>
+
+        {WOUND_POINTS.map(pt => {
+          const isSel = selected.has(pt.label);
+          const isHov = hovered === pt.id;
+          return (
+            <div
+              key={pt.id}
+              onClick={() => onToggle(pt.label)}
+              onMouseEnter={() => setHovered(pt.id)}
+              onMouseLeave={() => setHovered(null)}
+              style={{
+                position: "absolute",
+                left: `${pt.x}%`, top: `${pt.y}%`,
+                width: 26, height: 26,
+                marginLeft: -13, marginTop: -13,
+                borderRadius: "50%",
+                border: `2px solid ${isSel ? COLORS.teal500 : isHov ? COLORS.teal400 : COLORS.gray300}`,
+                background: isSel ? COLORS.teal50 : COLORS.white,
+                cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                zIndex: 2,
+                transform: isHov && !isSel ? "scale(1.18)" : "scale(1)",
+                boxShadow: isSel ? `0 0 0 4px rgba(0,151,169,0.18)` : isHov ? `0 0 0 4px rgba(0,151,169,0.12)` : "0 1px 3px rgba(0,0,0,0.06)",
+                transition: "all 0.15s",
+              }}
+            >
+              <span style={{
+                width: 8, height: 8, borderRadius: "50%",
+                background: isSel ? COLORS.teal600 : isHov ? COLORS.teal400 : COLORS.gray300,
+                display: "block", transition: "all 0.15s",
+              }} />
+              {isHov && (
+                <div style={{
+                  position: "absolute", bottom: "calc(100% + 6px)", left: "50%",
+                  transform: "translateX(-50%)", background: COLORS.navy800, color: COLORS.white,
+                  fontSize: 11, fontWeight: 600, padding: "3px 8px", borderRadius: 4,
+                  whiteSpace: "nowrap", pointerEvents: "none", zIndex: 10,
+                }}>
+                  {pt.label}
+                  <span style={{
+                    position: "absolute", top: "100%", left: "50%",
+                    transform: "translateX(-50%)",
+                    border: "4px solid transparent", borderTopColor: COLORS.navy800, display: "block",
+                  }} />
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        <span style={{ position: "absolute", top: "22%", left: -4, fontSize: 10, fontWeight: 700, color: COLORS.gray400, letterSpacing: "0.8px", textTransform: "uppercase" }}>Right</span>
+        <span style={{ position: "absolute", top: "22%", right: -4, fontSize: 10, fontWeight: 700, color: COLORS.gray400, letterSpacing: "0.8px", textTransform: "uppercase" }}>Left</span>
+      </div>
+
+      <div style={{ textAlign: "center", marginTop: 10, fontSize: 13, color: COLORS.gray500, minHeight: 20 }}>
+        {selected.size === 0
+          ? <span style={{ color: COLORS.gray400 }}>Tap a location to begin</span>
+          : <><strong style={{ color: COLORS.teal600 }}>{selected.size}</strong> location{selected.size > 1 ? "s" : ""} selected</>
+        }
+      </div>
+    </div>
+  );
+};
+
+const StepLocation = ({ selected, onToggle, onBack, onNext }) => (
+  <>
+    <div style={{ padding: "16px 20px 4px", flexShrink: 0 }}>
+      <h2 style={{ fontSize: 20, fontWeight: 700, color: COLORS.navy800 }}>Select Wound Locations</h2>
+    </div>
+    <p style={{ padding: "4px 20px 14px", fontSize: 13, color: COLORS.gray500, lineHeight: 1.4 }}>
+      Tap each location where you need to photograph a wound.
+    </p>
+    <div style={{ padding: "0 20px 20px", flex: 1, overflowY: "auto" }}>
+      <BodyMap selected={selected} onToggle={onToggle} />
+    </div>
+    <Footer>
+      <Btn variant="outline" onClick={onBack}>‹ Previous</Btn>
+      <Btn disabled={selected.size === 0} onClick={onNext}>Next ›</Btn>
+    </Footer>
+    <HelpBar />
+  </>
+);
+
+// ── Step 3: Upload ─────────────────────────────────────────────────────────
+
+const DropZone = ({ onFiles }) => {
+  const [dragging, setDragging] = useState(false);
+  const id = Math.random().toString(36).slice(2);
+  return (
+    <div
+      onDragOver={e => { e.preventDefault(); setDragging(true); }}
+      onDragLeave={() => setDragging(false)}
+      onDrop={e => { e.preventDefault(); setDragging(false); onFiles(e.dataTransfer.files); }}
+      onClick={() => document.getElementById(id)?.click()}
+      style={{
+        border: `2px dashed ${dragging ? COLORS.teal500 : COLORS.gray300}`,
+        borderRadius: 8, padding: "22px 16px", textAlign: "center",
+        cursor: "pointer", background: dragging ? COLORS.teal50 : COLORS.gray50,
+        marginBottom: 12, transition: "all 0.2s",
+      }}
+    >
+      <div style={{ fontSize: 28, marginBottom: 4, opacity: 0.4 }}>📷</div>
+      <div style={{ fontSize: 14, fontWeight: 600, color: COLORS.teal600 }}>+ Upload Images</div>
+      <div style={{ fontSize: 11, color: COLORS.gray400, marginTop: 4 }}>Tap to browse or drag &amp; drop</div>
+      <input id={id} type="file" multiple accept="image/*" style={{ display: "none" }} onChange={e => onFiles(e.target.files)} />
+    </div>
+  );
+};
+
+const ImageCard = ({ img, index, locIndex, total, onRemove, onChange, offerCopy }) => {
+  const [open, setOpen] = useState(true);
+  const statusColor = img.age && img.reopened !== null ? COLORS.lime500 : (img.woundName || img.age ? COLORS.amber600 : COLORS.gray300);
+
+  return (
+    <div style={{ border: `1px solid ${COLORS.gray200}`, borderRadius: 6, marginBottom: 8, overflow: "hidden" }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          display: "flex", alignItems: "center", gap: 8, padding: "10px 12px",
+          background: COLORS.gray50, cursor: "pointer", border: "none", width: "100%",
+          textAlign: "left", fontFamily: "inherit", fontSize: 12, fontWeight: 600, color: COLORS.gray600,
+        }}
+      >
+        <span style={{ width: 6, height: 6, borderRadius: "50%", background: statusColor, flexShrink: 0 }} />
+        Image {index + 1}: {img.name}
+        <span style={{ marginLeft: "auto", fontSize: 10, color: COLORS.gray400, transition: "transform 0.2s", transform: open ? "rotate(180deg)" : "none" }}>▼</span>
+      </button>
+      {open && (
+        <div style={{ padding: 12, borderTop: `1px solid ${COLORS.gray100}` }}>
+          <div style={{ marginBottom: 12 }}>
+            <Label>Wound Name <span style={{ color: COLORS.gray400, fontStyle: "italic", fontSize: 11 }}>(optional)</span></Label>
+            <Input value={img.woundName} onChange={v => onChange("woundName", v)} placeholder="e.g. Left shoulder wound" />
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <Label>Wound Age (Days) *</Label>
+            <Input type="number" value={img.age} onChange={v => onChange("age", v)} placeholder="1–9999" min="1" max="9999" />
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <Label>Onset Date <span style={{ color: COLORS.gray400, fontStyle: "italic", fontSize: 11 }}>(optional)</span></Label>
+            <Input type="date" value={img.date} onChange={v => onChange("date", v)} />
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <Label>Has this wound reopened? *</Label>
+            <RadioGroup name={`reopen-${locIndex}-${index}`} value={img.reopened} onChange={v => onChange("reopened", v)} />
+          </div>
+          <div>
+            <Label>Additional Details <span style={{ color: COLORS.gray400, fontStyle: "italic", fontSize: 11 }}>(optional)</span></Label>
+            <textarea
+              value={img.details} onChange={e => onChange("details", e.target.value)}
+              placeholder="Any notes..."
+              style={{
+                width: "100%", padding: "9px 11px", border: `1px solid ${COLORS.gray300}`,
+                borderRadius: 6, fontFamily: "inherit", fontSize: 13, color: COLORS.gray900,
+                outline: "none", resize: "vertical", minHeight: 52,
+              }}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const LocationBlock = ({ location, images, locIndex, onChange, onAddFiles, onRemove }) => {
+  const complete = images.length > 0 && images.every(m => m.age && m.reopened !== null);
+  const badge = complete ? "Complete" : images.length > 0 ? `${images.length} img` : "No images";
+
+  return (
+    <div style={{ marginBottom: 16, border: `1px solid ${COLORS.gray200}`, borderRadius: 8, overflow: "hidden" }}>
+      <div style={{
+        background: COLORS.gray50, padding: "11px 14px", fontSize: 14, fontWeight: 600,
+        color: COLORS.navy800, display: "flex", alignItems: "center", gap: 8,
+        borderBottom: `1px solid ${COLORS.gray200}`,
+      }}>
+        <span style={{ width: 8, height: 8, borderRadius: "50%", background: COLORS.teal500, flexShrink: 0 }} />
+        {location}
+        <span style={{
+          marginLeft: "auto", fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 10,
+          background: complete ? COLORS.lime100 : COLORS.red100,
+          color: complete ? COLORS.lime600 : COLORS.red600,
+        }}>{badge}</span>
+      </div>
+      <div style={{ padding: 14 }}>
+        <DropZone onFiles={files => onAddFiles(locIndex, files)} />
+
+        {images.length > 0 && (
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+            {images.map((img, mi) => (
+              <div key={mi} style={{
+                width: 64, height: 64, borderRadius: 6, background: COLORS.gray100,
+                position: "relative", overflow: "hidden", flexShrink: 0,
+              }}
+                onMouseEnter={e => e.currentTarget.querySelector("button").style.opacity = "1"}
+                onMouseLeave={e => e.currentTarget.querySelector("button").style.opacity = "0"}
+              >
+                <img src={img.dataUrl} alt={img.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                <button onClick={() => onRemove(locIndex, mi)} style={{
+                  position: "absolute", top: 3, right: 3, width: 20, height: 20,
+                  borderRadius: "50%", background: "rgba(0,0,0,0.55)", color: COLORS.white,
+                  fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center",
+                  cursor: "pointer", border: "none", opacity: 0, transition: "opacity 0.15s",
+                  fontWeight: 700, lineHeight: 1,
+                }}>×</button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {images.map((img, mi) => (
+          <ImageCard
+            key={mi} img={img} index={mi} locIndex={locIndex} total={images.length}
+            onRemove={() => onRemove(locIndex, mi)}
+            onChange={(k, v) => onChange(locIndex, mi, k, v)}
+          />
+        ))}
+
+        {images.length === 0 && (
+          <div style={{ fontSize: 12, color: COLORS.red600 }}>⚠ At least 1 image required</div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ── Step 4: Review ─────────────────────────────────────────────────────────
+
+const fmtDate = s => {
+  if (!s) return "—";
+  const d = new Date(s + "T00:00:00");
+  if (isNaN(d)) return s;
+  return `${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}/${String(d.getFullYear()).slice(-2)}`;
+};
+
+const Field = ({ label, value }) => (
+  <span>
+    <span style={{ color: COLORS.gray400, display: "inline-block", minWidth: 72, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.3px", fontWeight: 600 }}>{label}</span>
+    {" "}{value || "—"}
+  </span>
+);
+
+const StepReview = ({ selected, woundData, onBack, onSubmit }) => (
+  <>
+    <div style={{ padding: "16px 20px 4px", flexShrink: 0 }}>
+      <h2 style={{ fontSize: 20, fontWeight: 700, color: COLORS.navy800 }}>Review &amp; Submit</h2>
+    </div>
+    <p style={{ padding: "4px 20px 14px", fontSize: 13, color: COLORS.gray500, lineHeight: 1.4 }}>
+      Confirm everything looks correct before submitting.
+    </p>
+    <div style={{ padding: "0 20px 20px", flex: 1, overflowY: "auto" }}>
+      {[...selected].map(loc => {
+        const imgs = woundData[loc] || [];
+        return (
+          <div key={loc} style={{ marginBottom: 20 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0 8px", borderBottom: `2px solid ${COLORS.teal500}`, marginBottom: 10 }}>
+              <h3 style={{ fontSize: 14, fontWeight: 700, color: COLORS.navy800 }}>{loc}</h3>
+              <span style={{ fontSize: 11, color: COLORS.gray500, fontWeight: 600, background: COLORS.gray100, padding: "2px 10px", borderRadius: 10 }}>
+                {imgs.length} image{imgs.length !== 1 ? "s" : ""}
+              </span>
+            </div>
+            {imgs.map((img, i) => (
+              <div key={i} style={{ display: "flex", gap: 12, padding: 10, border: `1px solid ${COLORS.gray200}`, borderRadius: 8, marginBottom: 8 }}>
+                <div style={{ width: 56, height: 56, borderRadius: 6, background: COLORS.gray100, flexShrink: 0, overflow: "hidden" }}>
+                  <img src={img.dataUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                </div>
+                <div style={{ flex: 1, fontSize: 12, color: COLORS.gray600, lineHeight: 1.7 }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 600, color: COLORS.navy800, marginBottom: 2 }}>Image {i + 1}: {img.name}</div>
+                  <div><Field label="Name" value={img.woundName} /></div>
+                  <div><Field label="Age" value={img.age ? `${img.age} days` : null} /></div>
+                  <div><Field label="Onset" value={fmtDate(img.date)} /></div>
+                  <div><Field label="Reopened" value={img.reopened === "y" ? "Yes" : img.reopened === "n" ? "No" : null} /></div>
+                  <div><Field label="Details" value={img.details} /></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      })}
+    </div>
+    <Footer>
+      <Btn variant="outline" onClick={onBack}>‹ Previous</Btn>
+      <Btn onClick={onSubmit}>Submit</Btn>
+    </Footer>
+    <HelpBar />
+  </>
+);
+
+// ── Step 5: Success ────────────────────────────────────────────────────────
+
+const StepSuccess = ({ selected, woundData, onDone }) => {
+  const total = [...selected].reduce((s, l) => s + (woundData[l]?.length || 0), 0);
+  return (
+    <>
+      <div style={{ padding: "0 20px 20px", flex: 1, overflowY: "auto", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ textAlign: "center", padding: "40px 20px" }}>
+          <div style={{
+            width: 72, height: 72, borderRadius: "50%", background: COLORS.lime100,
+            display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px",
+            animation: "popIn 0.5s cubic-bezier(0.175,0.885,0.32,1.275)",
+          }}>
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke={COLORS.lime600} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          </div>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: COLORS.navy800, marginBottom: 8 }}>Photos Submitted</h2>
+          <p style={{ fontSize: 13.5, color: COLORS.gray500, lineHeight: 1.6, maxWidth: 280, margin: "0 auto" }}>
+            Your wound progress photos have been submitted to your care team for review.
+          </p>
+          <div style={{ background: COLORS.gray50, border: `1px solid ${COLORS.gray200}`, borderRadius: 8, padding: 16, marginTop: 24, textAlign: "left", fontSize: 13, color: COLORS.gray600, lineHeight: 1.8 }}>
+            <strong style={{ color: COLORS.gray700 }}>Total images:</strong> {total}<br />
+            <strong style={{ color: COLORS.gray700 }}>Locations:</strong> {[...selected].join(", ")}<br />
+            <strong style={{ color: COLORS.gray700 }}>Submitted:</strong> {new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+          </div>
+        </div>
+      </div>
+      <Footer><Btn onClick={onDone}>Done</Btn></Footer>
+      <HelpBar />
+      <style>{`@keyframes popIn { 0%{transform:scale(0);opacity:0} 100%{transform:scale(1);opacity:1} }`}</style>
+    </>
+  );
+};
+
+// ── Copy Details Modal ─────────────────────────────────────────────────────
+
+const CopyModal = ({ source, onConfirm, onDismiss }) => (
+  <div style={{
+    position: "absolute", inset: 0, background: "rgba(0,0,0,0.4)",
+    zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center",
+    backdropFilter: "blur(2px)",
+  }}>
+    <div style={{
+      background: COLORS.white, borderRadius: 12, padding: "22px 20px",
+      width: "90%", maxWidth: 320, boxShadow: "0 8px 32px rgba(0,0,0,0.16)",
+    }}>
+      <h3 style={{ fontSize: 15, fontWeight: 700, color: COLORS.navy800, marginBottom: 12 }}>Copy details from Image 1?</h3>
+      <div style={{ background: COLORS.gray50, border: `1px solid ${COLORS.gray200}`, borderRadius: 6, padding: 12, marginBottom: 16, fontSize: 12, color: COLORS.gray600, lineHeight: 1.8 }}>
+        {source.woundName && <><strong>Name:</strong> {source.woundName}<br /></>}
+        {source.age && <><strong>Age:</strong> {source.age} days<br /></>}
+        {source.date && <><strong>Onset:</strong> {source.date}<br /></>}
+        {source.reopened && <><strong>Reopened:</strong> {source.reopened === "y" ? "Yes" : "No"}<br /></>}
+        {source.details && <><strong>Details:</strong> {source.details}</>}
+      </div>
+      <div style={{ display: "flex", gap: 8 }}>
+        <Btn onClick={onConfirm}>Copy Details</Btn>
+        <Btn variant="outline" onClick={onDismiss}>No Thanks</Btn>
+      </div>
+    </div>
+  </div>
+);
+
+// ── Progress Bar ───────────────────────────────────────────────────────────
+
+const ProgressSteps = ({ current }) => (
+  <div style={{ display: "flex", padding: "14px 20px 10px", gap: 6, flexShrink: 0, background: COLORS.white, borderBottom: `1px solid ${COLORS.gray200}` }}>
+    {STEPS.map((label, i) => {
+      const step = i + 1;
+      const done = step < current, active = step === current;
+      return (
+        <div key={step} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 5 }}>
+          <div style={{ width: "100%", height: 4, borderRadius: 2, background: done ? COLORS.lime500 : active ? COLORS.teal500 : COLORS.gray200, transition: "background 0.4s" }} />
+          <span style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.3px", color: done ? COLORS.lime600 : active ? COLORS.teal600 : COLORS.gray400, transition: "color 0.3s" }}>
+            {label}
+          </span>
+        </div>
+      );
+    })}
+  </div>
+);
+
+// ── App ────────────────────────────────────────────────────────────────────
+
+export default function App() {
+  const [step, setStep] = useState(1);
+  const [selected, setSelected] = useState(new Set());
+  const [woundData, setWoundData] = useState({});
+  const [copyModal, setCopyModal] = useState(null);
+
+  const toggleLocation = useCallback(label => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      next.has(label) ? next.delete(label) : next.add(label);
+      return next;
+    });
+  }, []);
+
+  const addFiles = useCallback((locIndex, files) => {
+    const loc = [...selected][locIndex];
+    setWoundData(prev => {
+      const imgs = [...(prev[loc] || [])];
+      const firstImg = imgs[0];
+      Array.from(files).forEach(file => {
+        if (file.size > 5e6) { alert(`${file.name} exceeds 5 MB.`); return; }
+        const reader = new FileReader();
+        reader.onload = e => {
+          const name = file.name.length > 24 ? file.name.slice(0, 21) + "..." : file.name;
+          const newImg = { ...emptyImage(), file, dataUrl: e.target.result, name, fullName: file.name };
+          setWoundData(d => {
+            const updated = [...(d[loc] || []), newImg];
+            // offer copy if there's a first image with data
+            if (updated.length > 1 && firstImg?.age) {
+              setCopyModal({ loc, newIndex: updated.length - 1, source: firstImg });
+            }
+            return { ...d, [loc]: updated };
+          });
+        };
+        reader.readAsDataURL(file);
+      });
+      return prev;
+    });
+  }, [selected]);
+
+  const removeImage = useCallback((locIndex, imgIndex) => {
+    const loc = [...selected][locIndex];
+    setWoundData(prev => ({ ...prev, [loc]: prev[loc].filter((_, i) => i !== imgIndex) }));
+  }, [selected]);
+
+  const updateImage = useCallback((locIndex, imgIndex, key, value) => {
+    const loc = [...selected][locIndex];
+    setWoundData(prev => {
+      const imgs = [...prev[loc]];
+      imgs[imgIndex] = { ...imgs[imgIndex], [key]: value };
+      return { ...prev, [loc]: imgs };
+    });
+  }, [selected]);
+
+  const canProceedStep3 = () => {
+    for (const loc of selected) {
+      const imgs = woundData[loc] || [];
+      if (!imgs.length) return false;
+      if (imgs.some(m => !m.age || m.reopened === null)) return false;
+    }
+    return true;
+  };
+
+  const handleReset = () => {
+    setStep(1); setSelected(new Set()); setWoundData({});
+  };
+
+  const handleClose = () => {
+    if (step === 1 || window.confirm("Exit? Your progress will be lost.")) handleReset();
+  };
+
+  // Sync woundData keys with selection when moving to step 3
+  const goToStep3 = () => {
+    setWoundData(prev => {
+      const next = {};
+      selected.forEach(l => { next[l] = prev[l] || []; });
+      return next;
+    });
+    setStep(3);
+  };
+
+  return (
+    <div style={{ fontFamily: "'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", background: COLORS.gray100, display: "flex", justifyContent: "center", alignItems: "flex-start", minHeight: "100vh" }}>
+      <style>{`
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&display=swap');
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: ${COLORS.gray300}; border-radius: 2px; }
+      `}</style>
+
+      <div style={{
+        width: "100%", maxWidth: 580, minHeight: "100vh",
+        background: COLORS.white, overflow: "hidden", position: "relative",
+        display: "flex", flexDirection: "column",
+        boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
+      }}>
+        {/* Top bar */}
+        <div style={{
+          background: `linear-gradient(135deg, ${COLORS.navy900} 0%, ${COLORS.navy700} 100%)`,
+          padding: "12px 20px", display: "flex", alignItems: "center",
+          justifyContent: "space-between", flexShrink: 0,
+        }}>
+          <span style={{ color: COLORS.white, fontSize: 15, fontWeight: 600 }}>Wound Tracking</span>
+          <button onClick={handleClose} style={{
+            width: 28, height: 28, border: "none", borderRadius: "50%",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 16, color: "rgba(255,255,255,0.7)", cursor: "pointer",
+            background: "rgba(255,255,255,0.1)",
+          }}>×</button>
+        </div>
+
+        {step < 5 && <ProgressSteps current={step} />}
+
+        {/* Steps */}
+        {step === 1 && <StepTips onNext={() => setStep(2)} />}
+        {step === 2 && <StepLocation selected={selected} onToggle={toggleLocation} onBack={() => setStep(1)} onNext={goToStep3} />}
+        {step === 3 && (
+          <>
+            <div style={{ padding: "16px 20px 4px", flexShrink: 0 }}>
+              <h2 style={{ fontSize: 20, fontWeight: 700, color: COLORS.navy800 }}>Upload &amp; Details</h2>
+            </div>
+            <p style={{ padding: "4px 20px 14px", fontSize: 13, color: COLORS.gray500, lineHeight: 1.4 }}>
+              Upload at least one image per location and provide wound details.
+            </p>
+            <div style={{ padding: "0 20px 20px", flex: 1, overflowY: "auto" }}>
+              {[...selected].map((loc, li) => (
+                <LocationBlock
+                  key={loc} location={loc} images={woundData[loc] || []} locIndex={li}
+                  onChange={updateImage} onAddFiles={addFiles} onRemove={removeImage}
+                />
+              ))}
+            </div>
+            <Footer>
+              <Btn variant="outline" onClick={() => setStep(2)}>‹ Previous</Btn>
+              <Btn disabled={!canProceedStep3()} onClick={() => setStep(4)}>Next ›</Btn>
+            </Footer>
+            <HelpBar />
+          </>
+        )}
+        {step === 4 && <StepReview selected={selected} woundData={woundData} onBack={() => setStep(3)} onSubmit={() => setStep(5)} />}
+        {step === 5 && <StepSuccess selected={selected} woundData={woundData} onDone={handleReset} />}
+
+        {/* Copy modal */}
+        {copyModal && (
+          <CopyModal
+            source={copyModal.source}
+            onConfirm={() => {
+              const { loc, newIndex, source } = copyModal;
+              setWoundData(prev => {
+                const imgs = [...prev[loc]];
+                imgs[newIndex] = { ...imgs[newIndex], woundName: source.woundName, age: source.age, date: source.date, reopened: source.reopened, details: source.details };
+                return { ...prev, [loc]: imgs };
+              });
+              setCopyModal(null);
+            }}
+            onDismiss={() => setCopyModal(null)}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
   </script>
 </body>
 </html>
