@@ -10,7 +10,8 @@
 </head>
 <body>
   <div id="root"></div>
-  <script type="text/babel">import { useState, useCallback } from "react";
+  <script type="text/babel">
+const { useState, useCallback } = React;
 
 const COLORS = {
   navy900: "#131f2e", navy800: "#1a2b3d", navy700: "#243a50",
@@ -565,7 +566,7 @@ const ProgressSteps = ({ current }) => (
 
 // ── App ────────────────────────────────────────────────────────────────────
 
-export default function App() {
+function App() {
   const [step, setStep] = useState(1);
   const [selected, setSelected] = useState(new Set());
   const [woundData, setWoundData] = useState({});
@@ -728,6 +729,8 @@ export default function App() {
     </div>
   );
 }
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);
   </script>
 </body>
 </html>
