@@ -59,7 +59,7 @@ const WOUND_POINTS = [
 
 const STEPS = ["Tips", "Location", "Upload", "Review"];
 
-const emptyImage = () => ({ file: null, dataUrl: null, name: "", woundName: "", age: "", date: "", reopened: null, details: "" });
+const emptyImage = () => ({ file: null, dataUrl: null, name: "", woundName: "", date: "", reopened: null, details: "" });
 
 // ── Shared UI ──────────────────────────────────────────────────────────────
 
@@ -79,8 +79,7 @@ const Btn = ({ children, variant = "primary", disabled, onClick, style }) => {
 
 const HelpBar = () => (
   <div style={{ background: COLORS.navy800, color: "rgba(255,255,255,0.8)", textAlign: "center", padding: 10, fontSize: 12, flexShrink: 0 }}>
-    Need help? Call your pharmacist:{" "}
-    <a href="tel:8336706464" style={{ color: COLORS.teal200, textDecoration: "none", fontWeight: 600 }}>833-670-6464</a>
+    Need help? Contact your pharmacist for assistance.
   </div>
 );
 
@@ -307,7 +306,7 @@ const DropZone = ({ onFiles }) => {
 
 const ImageCard = ({ img, index, locIndex, total, onRemove, onChange, offerCopy }) => {
   const [open, setOpen] = useState(true);
-  const statusColor = img.age && img.reopened !== null ? COLORS.lime500 : (img.woundName || img.age ? COLORS.amber600 : COLORS.gray300);
+  const statusColor = img.date && img.reopened !== null ? COLORS.lime500 : (img.woundName || img.date ? COLORS.amber600 : COLORS.gray300);
 
   return (
     <div style={{ border: `1px solid ${COLORS.gray200}`, borderRadius: 6, marginBottom: 8, overflow: "hidden" }}>
@@ -330,11 +329,7 @@ const ImageCard = ({ img, index, locIndex, total, onRemove, onChange, offerCopy 
             <Input value={img.woundName} onChange={v => onChange("woundName", v)} placeholder="e.g. Left shoulder wound" />
           </div>
           <div style={{ marginBottom: 12 }}>
-            <Label>Wound Age (Days) *</Label>
-            <Input type="number" value={img.age} onChange={v => onChange("age", v)} placeholder="1–9999" min="1" max="9999" />
-          </div>
-          <div style={{ marginBottom: 12 }}>
-            <Label>Onset Date <span style={{ color: COLORS.gray400, fontStyle: "italic", fontSize: 11 }}>(optional)</span></Label>
+            <Label>Onset Date *</Label>
             <Input type="date" value={img.date} onChange={v => onChange("date", v)} />
           </div>
           <div style={{ marginBottom: 12 }}>
@@ -360,7 +355,7 @@ const ImageCard = ({ img, index, locIndex, total, onRemove, onChange, offerCopy 
 };
 
 const LocationBlock = ({ location, images, locIndex, onChange, onAddFiles, onRemove }) => {
-  const complete = images.length > 0 && images.every(m => m.age && m.reopened !== null);
+  const complete = images.length > 0 && images.every(m => m.date && m.reopened !== null);
   const badge = complete ? "Complete" : images.length > 0 ? `${images.length} img` : "No images";
 
   return (
@@ -463,7 +458,6 @@ const StepReview = ({ selected, woundData, onBack, onSubmit }) => (
                 <div style={{ flex: 1, fontSize: 12, color: COLORS.gray600, lineHeight: 1.7 }}>
                   <div style={{ fontSize: 12.5, fontWeight: 600, color: COLORS.navy800, marginBottom: 2 }}>Image {i + 1}: {img.name}</div>
                   <div><Field label="Name" value={img.woundName} /></div>
-                  <div><Field label="Age" value={img.age ? `${img.age} days` : null} /></div>
                   <div><Field label="Onset" value={fmtDate(img.date)} /></div>
                   <div><Field label="Reopened" value={img.reopened === "y" ? "Yes" : img.reopened === "n" ? "No" : null} /></div>
                   <div><Field label="Details" value={img.details} /></div>
@@ -532,7 +526,6 @@ const CopyModal = ({ source, onConfirm, onDismiss }) => (
       <h3 style={{ fontSize: 15, fontWeight: 700, color: COLORS.navy800, marginBottom: 12 }}>Copy details from Image 1?</h3>
       <div style={{ background: COLORS.gray50, border: `1px solid ${COLORS.gray200}`, borderRadius: 6, padding: 12, marginBottom: 16, fontSize: 12, color: COLORS.gray600, lineHeight: 1.8 }}>
         {source.woundName && <><strong>Name:</strong> {source.woundName}<br /></>}
-        {source.age && <><strong>Age:</strong> {source.age} days<br /></>}
         {source.date && <><strong>Onset:</strong> {source.date}<br /></>}
         {source.reopened && <><strong>Reopened:</strong> {source.reopened === "y" ? "Yes" : "No"}<br /></>}
         {source.details && <><strong>Details:</strong> {source.details}</>}
@@ -594,7 +587,7 @@ function App() {
           setWoundData(d => {
             const updated = [...(d[loc] || []), newImg];
             // offer copy if there's a first image with data
-            if (updated.length > 1 && firstImg?.age) {
+            if (updated.length > 1 && firstImg?.date) {
               setCopyModal({ loc, newIndex: updated.length - 1, source: firstImg });
             }
             return { ...d, [loc]: updated };
@@ -624,7 +617,7 @@ function App() {
     for (const loc of selected) {
       const imgs = woundData[loc] || [];
       if (!imgs.length) return false;
-      if (imgs.some(m => !m.age || m.reopened === null)) return false;
+      if (imgs.some(m => !m.date || m.reopened === null)) return false;
     }
     return true;
   };
@@ -717,7 +710,7 @@ function App() {
               const { loc, newIndex, source } = copyModal;
               setWoundData(prev => {
                 const imgs = [...prev[loc]];
-                imgs[newIndex] = { ...imgs[newIndex], woundName: source.woundName, age: source.age, date: source.date, reopened: source.reopened, details: source.details };
+                imgs[newIndex] = { ...imgs[newIndex], woundName: source.woundName, date: source.date, reopened: source.reopened, details: source.details };
                 return { ...prev, [loc]: imgs };
               });
               setCopyModal(null);
