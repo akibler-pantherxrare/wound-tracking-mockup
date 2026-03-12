@@ -304,9 +304,17 @@ const DropZone = ({ onFiles }) => {
   );
 };
 
-const ImageCard = ({ img, index, locIndex, total, onRemove, onChange, offerCopy }) => {
+const ImageCard = ({ img, index, locIndex, total, onRemove, onChange, onOfferCopy }) => {
   const [open, setOpen] = useState(true);
+  const [copyOffered, setCopyOffered] = useState(false);
   const statusColor = img.date && img.reopened !== null ? COLORS.lime500 : (img.woundName || img.date ? COLORS.amber600 : COLORS.gray300);
+
+  const handleFocus = () => {
+    if (onOfferCopy && !copyOffered && !img.date && img.reopened === null) {
+      setCopyOffered(true);
+      onOfferCopy();
+    }
+  };
 
   return (
     <div style={{ border: `1px solid ${COLORS.gray200}`, borderRadius: 6, marginBottom: 8, overflow: "hidden" }}>
@@ -323,7 +331,7 @@ const ImageCard = ({ img, index, locIndex, total, onRemove, onChange, offerCopy 
         <span style={{ marginLeft: "auto", fontSize: 10, color: COLORS.gray400, transition: "transform 0.2s", transform: open ? "rotate(180deg)" : "none" }}>▼</span>
       </button>
       {open && (
-        <div style={{ padding: 12, borderTop: `1px solid ${COLORS.gray100}` }}>
+        <div style={{ padding: 12, borderTop: `1px solid ${COLORS.gray100}` }} onFocus={handleFocus}>
           <div style={{ marginBottom: 12 }}>
             <Label>Wound Name <span style={{ color: COLORS.gray400, fontStyle: "italic", fontSize: 11 }}>(optional)</span></Label>
             <Input value={img.woundName} onChange={v => onChange("woundName", v)} placeholder="e.g. Left shoulder wound" />
@@ -354,7 +362,7 @@ const ImageCard = ({ img, index, locIndex, total, onRemove, onChange, offerCopy 
   );
 };
 
-const LocationBlock = ({ location, images, locIndex, onChange, onAddFiles, onRemove }) => {
+const LocationBlock = ({ location, images, locIndex, onChange, onAddFiles, onRemove, onOfferCopy }) => {
   const complete = images.length > 0 && images.every(m => m.date && m.reopened !== null);
   const badge = complete ? "Complete" : images.length > 0 ? `${images.length} img` : "No images";
 
@@ -404,6 +412,7 @@ const LocationBlock = ({ location, images, locIndex, onChange, onAddFiles, onRem
             key={mi} img={img} index={mi} locIndex={locIndex} total={images.length}
             onRemove={() => onRemove(locIndex, mi)}
             onChange={(k, v) => onChange(locIndex, mi, k, v)}
+            onOfferCopy={mi > 0 && onOfferCopy ? () => onOfferCopy(locIndex, mi) : undefined}
           />
         ))}
 
@@ -513,30 +522,40 @@ const StepSuccess = ({ selected, woundData, onDone }) => {
 
 // ── Copy Details Modal ─────────────────────────────────────────────────────
 
-const CopyModal = ({ source, onConfirm, onDismiss }) => (
-  <div style={{
-    position: "absolute", inset: 0, background: "rgba(0,0,0,0.4)",
-    zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center",
-    backdropFilter: "blur(2px)",
-  }}>
+const CopyModal = ({ source, imageCount, onConfirm, onDismiss }) => {
+  const [applyAll, setApplyAll] = useState(false);
+  const showAllOption = imageCount > 2;
+  return (
     <div style={{
-      background: COLORS.white, borderRadius: 12, padding: "22px 20px",
-      width: "90%", maxWidth: 320, boxShadow: "0 8px 32px rgba(0,0,0,0.16)",
+      position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)",
+      zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center",
+      backdropFilter: "blur(2px)",
     }}>
-      <h3 style={{ fontSize: 15, fontWeight: 700, color: COLORS.navy800, marginBottom: 12 }}>Copy details from Image 1?</h3>
-      <div style={{ background: COLORS.gray50, border: `1px solid ${COLORS.gray200}`, borderRadius: 6, padding: 12, marginBottom: 16, fontSize: 12, color: COLORS.gray600, lineHeight: 1.8 }}>
-        {source.woundName && <><strong>Name:</strong> {source.woundName}<br /></>}
-        {source.date && <><strong>Onset:</strong> {source.date}<br /></>}
-        {source.reopened && <><strong>Reopened:</strong> {source.reopened === "y" ? "Yes" : "No"}<br /></>}
-        {source.details && <><strong>Details:</strong> {source.details}</>}
-      </div>
-      <div style={{ display: "flex", gap: 8 }}>
-        <Btn onClick={onConfirm}>Copy Details</Btn>
-        <Btn variant="outline" onClick={onDismiss}>No Thanks</Btn>
+      <div style={{
+        background: COLORS.white, borderRadius: 12, padding: "22px 20px",
+        width: "90%", maxWidth: 320, boxShadow: "0 8px 32px rgba(0,0,0,0.16)",
+      }}>
+        <h3 style={{ fontSize: 15, fontWeight: 700, color: COLORS.navy800, marginBottom: 12 }}>Copy details from Image 1?</h3>
+        <div style={{ background: COLORS.gray50, border: `1px solid ${COLORS.gray200}`, borderRadius: 6, padding: 12, marginBottom: 16, fontSize: 12, color: COLORS.gray600, lineHeight: 1.8 }}>
+          {source.woundName && <><strong>Name:</strong> {source.woundName}<br /></>}
+          {source.date && <><strong>Onset:</strong> {source.date}<br /></>}
+          {source.reopened && <><strong>Reopened:</strong> {source.reopened === "y" ? "Yes" : "No"}<br /></>}
+          {source.details && <><strong>Details:</strong> {source.details}</>}
+        </div>
+        {showAllOption && (
+          <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16, cursor: "pointer", fontSize: 13, color: COLORS.gray700 }}>
+            <input type="checkbox" checked={applyAll} onChange={e => setApplyAll(e.target.checked)} style={{ width: 16, height: 16, accentColor: COLORS.teal500, cursor: "pointer" }} />
+            Apply to all images in this area
+          </label>
+        )}
+        <div style={{ display: "flex", gap: 8 }}>
+          <Btn onClick={() => onConfirm(applyAll)}>Copy Details</Btn>
+          <Btn variant="outline" onClick={onDismiss}>No Thanks</Btn>
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 // ── Progress Bar ───────────────────────────────────────────────────────────
 
@@ -576,22 +595,13 @@ function App() {
   const addFiles = useCallback((locIndex, files) => {
     const loc = [...selected][locIndex];
     setWoundData(prev => {
-      const imgs = [...(prev[loc] || [])];
-      const firstImg = imgs[0];
       Array.from(files).forEach(file => {
         if (file.size > 5e6) { alert(`${file.name} exceeds 5 MB.`); return; }
         const reader = new FileReader();
         reader.onload = e => {
           const name = file.name.length > 24 ? file.name.slice(0, 21) + "..." : file.name;
           const newImg = { ...emptyImage(), file, dataUrl: e.target.result, name, fullName: file.name };
-          setWoundData(d => {
-            const updated = [...(d[loc] || []), newImg];
-            // offer copy if there's a first image with data
-            if (updated.length > 1 && firstImg?.date) {
-              setCopyModal({ loc, newIndex: updated.length - 1, source: firstImg });
-            }
-            return { ...d, [loc]: updated };
-          });
+          setWoundData(d => ({ ...d, [loc]: [...(d[loc] || []), newImg] }));
         };
         reader.readAsDataURL(file);
       });
@@ -612,6 +622,14 @@ function App() {
       return { ...prev, [loc]: imgs };
     });
   }, [selected]);
+
+  const offerCopy = useCallback((locIndex, imgIndex) => {
+    const loc = [...selected][locIndex];
+    const firstImg = woundData[loc]?.[0];
+    if (firstImg && (firstImg.woundName || firstImg.date || firstImg.reopened !== null || firstImg.details)) {
+      setCopyModal({ loc, newIndex: imgIndex, source: firstImg });
+    }
+  }, [selected, woundData]);
 
   const canProceedStep3 = () => {
     for (const loc of selected) {
@@ -689,6 +707,7 @@ function App() {
                 <LocationBlock
                   key={loc} location={loc} images={woundData[loc] || []} locIndex={li}
                   onChange={updateImage} onAddFiles={addFiles} onRemove={removeImage}
+                  onOfferCopy={offerCopy}
                 />
               ))}
             </div>
@@ -706,11 +725,19 @@ function App() {
         {copyModal && (
           <CopyModal
             source={copyModal.source}
-            onConfirm={() => {
+            imageCount={(woundData[copyModal.loc] || []).length}
+            onConfirm={(applyAll) => {
               const { loc, newIndex, source } = copyModal;
+              const copyFields = { woundName: source.woundName, date: source.date, reopened: source.reopened, details: source.details };
               setWoundData(prev => {
                 const imgs = [...prev[loc]];
-                imgs[newIndex] = { ...imgs[newIndex], woundName: source.woundName, date: source.date, reopened: source.reopened, details: source.details };
+                if (applyAll) {
+                  for (let i = 1; i < imgs.length; i++) {
+                    imgs[i] = { ...imgs[i], ...copyFields };
+                  }
+                } else {
+                  imgs[newIndex] = { ...imgs[newIndex], ...copyFields };
+                }
                 return { ...prev, [loc]: imgs };
               });
               setCopyModal(null);
