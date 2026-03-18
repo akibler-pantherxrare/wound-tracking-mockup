@@ -115,6 +115,10 @@
   }
   .progress-step.done .step-text { color: var(--lime-600); }
   .progress-step.active .step-text { color: var(--teal-600); }
+  .progress-step.visited .step-bar { background: var(--teal-500); opacity: 0.45; }
+  .progress-step.visited .step-text { color: var(--teal-600); opacity: 0.65; }
+  .progress-step.done, .progress-step.visited { cursor: pointer; }
+  .progress-step.done:active .step-bar, .progress-step.visited:active .step-bar { filter: brightness(0.85); }
 
   /* Title */
   .dtitle { padding: 16px 20px 4px; flex-shrink: 0; }
@@ -127,7 +131,7 @@
   /* Body */
   .dbody {
     padding: 0 20px 20px; flex: 1; overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
+    -webkit-overflow-scrolling: touch; min-height: 0;
   }
 
   /* Footer */
@@ -398,10 +402,10 @@
     <button class="close-x" onclick="confirmClose()">&times;</button>
   </div>
   <div class="progress-steps" id="psteps">
-    <div class="progress-step active" data-step="1"><div class="step-bar"></div><span class="step-text">Tips</span></div>
-    <div class="progress-step" data-step="2"><div class="step-bar"></div><span class="step-text">Location</span></div>
-    <div class="progress-step" data-step="3"><div class="step-bar"></div><span class="step-text">Upload</span></div>
-    <div class="progress-step" data-step="4"><div class="step-bar"></div><span class="step-text">Review</span></div>
+    <div class="progress-step active" data-step="1" onclick="goStep(this)"><div class="step-bar"></div><span class="step-text">Tips</span></div>
+    <div class="progress-step" data-step="2" onclick="goStep(this)"><div class="step-bar"></div><span class="step-text">Location</span></div>
+    <div class="progress-step" data-step="3" onclick="goStep(this)"><div class="step-bar"></div><span class="step-text">Upload</span></div>
+    <div class="progress-step" data-step="4" onclick="goStep(this)"><div class="step-bar"></div><span class="step-text">Review</span></div>
   </div>
 
   <!-- STEP 1 -->
@@ -570,7 +574,7 @@
     <div class="cdlg">
       <h3 id="ctitle">Copy details to all images?</h3>
       <div class="cpv" id="cprev"></div>
-      <label class="cpchk"><input type="checkbox" id="cpAll" checked> Apply to all wound regions</label>
+      <label class="cpchk"><input type="checkbox" id="cpAll" checked> Apply to all images in this area</label>
       <div class="ca">
         <button class="btn btn-pri" onclick="doCopy()">Copy Details</button>
         <button class="btn btn-out" onclick="noCopy()">No Thanks</button>
@@ -580,7 +584,7 @@
 </div>
 
 <script>
-let cur=1, sel=new Set(), wd={}, pCopy=null;
+let cur=1, maxStep=1, sel=new Set(), wd={}, pCopy=null;
 const h=s=>{const d=document.createElement('div');d.textContent=s||'';return d.innerHTML};
 const ha=s=>(s||'').replaceAll('&','&amp;').replaceAll('"','&quot;');
 
@@ -588,26 +592,30 @@ function go(n){
   const p=document.querySelector('.spanel.on');
   if(p)p.classList.remove('on','rev');
   const back=n<cur;cur=n;
+  if(cur>maxStep)maxStep=cur;
   const el=document.getElementById('s'+n);
   if(back)el.classList.add('rev');
   el.classList.add('on');
   document.querySelectorAll('.progress-step').forEach(e=>{
-    const s=+e.dataset.step;e.classList.remove('active','done');
-    if(s<cur)e.classList.add('done');else if(s===cur)e.classList.add('active');
+    const s=+e.dataset.step;e.classList.remove('active','done','visited');
+    if(s<cur)e.classList.add('done');
+    else if(s===cur)e.classList.add('active');
+    else if(s<=maxStep)e.classList.add('visited');
   });
   document.getElementById('psteps').style.display=cur===5?'none':'';
   if(n===3)buildUp();if(n===4)buildRev();
   const b=el.querySelector('.dbody');if(b)b.scrollTop=0;
 }
+function goStep(el){const s=+el.dataset.step;if(el.classList.contains('done')||el.classList.contains('visited'))go(s);}
 function confirmClose(){if(cur===1||confirm('Exit? Your progress will be lost.'))reset();}
 function reset(){
   sel.clear();wd={};
   document.querySelectorAll('.wp.sel').forEach(p=>p.classList.remove('sel'));
-  updCnt();cur=1;
+  updCnt();cur=1;maxStep=1;
   document.querySelectorAll('.spanel').forEach(p=>p.classList.remove('on','rev'));
   document.getElementById('s1').classList.add('on');
   document.querySelectorAll('.progress-step').forEach(e=>{
-    e.classList.remove('active','done');if(+e.dataset.step===1)e.classList.add('active');
+    e.classList.remove('active','done','visited');if(+e.dataset.step===1)e.classList.add('active');
   });
   document.getElementById('psteps').style.display='';
 }
@@ -724,23 +732,23 @@ function offerCp(li,mi){
   document.getElementById('covl').classList.add('vis');
 }
 function doCopy(){
-  if(!pCopy)return;const{l}=pCopy,s=wd[l][0];
-  const allRegions=document.getElementById('cpAll').checked;
-  if(allRegions){
-    sel.forEach(loc=>{(wd[loc]||[]).forEach((t,i)=>{if(loc!==l||i>0){t.wn=s.wn;t.dt=s.dt;t.re=s.re;t.det=s.det;t.cpOff=true;}});});
-  }else{
+  if(!pCopy)return;const{l,mi}=pCopy,s=wd[l][0];
+  const allInArea=document.getElementById('cpAll').checked;
+  if(allInArea){
     wd[l].forEach((t,i)=>{if(i>0){t.wn=s.wn;t.dt=s.dt;t.re=s.re;t.det=s.det;t.cpOff=true;}});
+  }else{
+    const t=wd[l][mi];t.wn=s.wn;t.dt=s.dt;t.re=s.re;t.det=s.det;t.cpOff=true;
   }
   pCopy=null;document.getElementById('covl').classList.remove('vis');buildUp();
 }
 function noCopy(){
   if(pCopy){
-    const{l}=pCopy;
-    const allRegions=document.getElementById('cpAll').checked;
-    if(allRegions){
-      sel.forEach(loc=>{(wd[loc]||[]).forEach((t,i)=>{if(loc!==l||i>0)t.cpOff=true;});});
-    }else{
+    const{l,mi}=pCopy;
+    const allInArea=document.getElementById('cpAll').checked;
+    if(allInArea){
       wd[l].forEach((t,i)=>{if(i>0)t.cpOff=true;});
+    }else{
+      wd[l][mi].cpOff=true;
     }
   }
   pCopy=null;document.getElementById('covl').classList.remove('vis');
