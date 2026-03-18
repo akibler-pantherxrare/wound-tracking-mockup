@@ -1,798 +1,797 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Wound Tracking</title>
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wound Tracking — Interactive Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy-900: #131f2e;
+    --navy-800: #1a2b3d;
+    --navy-700: #243a50;
+    --teal-700: #007a8a;
+    --teal-600: #00889b;
+    --teal-500: #0097a9;
+    --teal-400: #1eafc2;
+    --teal-200: #8ed5e0;
+    --teal-100: #c8ecf2;
+    --teal-50: #e8f6f9;
+    --lime-600: #6fa62d;
+    --lime-500: #8cc63f;
+    --lime-100: #ecf5de;
+    --gray-900: #1a1a1a;
+    --gray-700: #3a3f4a;
+    --gray-600: #555b66;
+    --gray-500: #6b7280;
+    --gray-400: #9ca3af;
+    --gray-300: #ced2d8;
+    --gray-200: #e2e5ea;
+    --gray-100: #f0f2f5;
+    --gray-50: #f8f9fb;
+    --red-600: #c0392b;
+    --red-100: #fde8e8;
+    --amber-600: #d4a017;
+    --white: #ffffff;
+    --radius-sm: 6px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+
+  body {
+    font-family: 'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--gray-100);
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+  }
+
+  /* ===== FRAME — mirrors IonModal responsive behavior ===== */
+  .app-frame {
+    width: 100%;
+    height: 100vh;
+    height: 100dvh;
+    background: var(--white);
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+  /* Tablet (577-992) — constrained centered modal */
+  @media (min-width: 577px) {
+    body { align-items: center; padding: 24px 16px; }
+    .app-frame {
+      max-width: 543px;
+      height: auto;
+      max-height: 90vh;
+      border-radius: var(--radius-lg);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.16);
+    }
+  }
+  /* Desktop (993+) — larger centered modal */
+  @media (min-width: 993px) {
+    .app-frame {
+      max-width: 600px;
+      max-height: 85vh;
+    }
+  }
+
+  /* Top bar */
+  .top-bar {
+    background: linear-gradient(135deg, var(--navy-900) 0%, var(--navy-700) 100%);
+    padding: 12px 20px; display: flex; align-items: center;
+    justify-content: space-between; flex-shrink: 0;
+  }
+  .top-bar-title { color: var(--white); font-size: 15px; font-weight: 600; }
+  .top-bar .close-x {
+    width: 28px; height: 28px; border: none; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; color: rgba(255,255,255,0.7); cursor: pointer;
+    background: rgba(255,255,255,0.1); transition: all 0.15s;
+  }
+  .top-bar .close-x:hover { background: rgba(255,255,255,0.2); color: var(--white); }
+
+  /* Progress */
+  .progress-steps {
+    display: flex; padding: 14px 20px 10px; gap: 6px;
+    flex-shrink: 0; background: var(--white);
+    border-bottom: 1px solid var(--gray-200);
+  }
+  .progress-step { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; }
+  .progress-step .step-bar {
+    width: 100%; height: 4px; border-radius: 2px;
+    background: var(--gray-200); transition: background 0.4s;
+  }
+  .progress-step.done .step-bar { background: var(--lime-500); }
+  .progress-step.active .step-bar { background: var(--teal-500); }
+  .progress-step .step-text {
+    font-size: 10px; font-weight: 600; color: var(--gray-400);
+    text-transform: uppercase; letter-spacing: 0.3px; transition: color 0.3s;
+  }
+  .progress-step.done .step-text { color: var(--lime-600); }
+  .progress-step.active .step-text { color: var(--teal-600); }
+  .progress-step.visited .step-bar { background: var(--teal-500); opacity: 0.45; }
+  .progress-step.visited .step-text { color: var(--teal-600); opacity: 0.65; }
+  .progress-step.done, .progress-step.visited { cursor: pointer; }
+  .progress-step.done:active .step-bar, .progress-step.visited:active .step-bar { filter: brightness(0.85); }
+
+  /* Title */
+  .dtitle { padding: 16px 20px 4px; flex-shrink: 0; }
+  .dtitle h2 { font-size: 20px; font-weight: 700; color: var(--navy-800); }
+  .dsub {
+    padding: 4px 20px 14px; font-size: 13px; color: var(--gray-500);
+    line-height: 1.4; flex-shrink: 0;
+  }
+
+  /* Body */
+  .dbody {
+    padding: 0 20px 20px; flex: 1; overflow-y: auto;
+    -webkit-overflow-scrolling: touch; min-height: 0;
+  }
+
+  /* Footer */
+  .dfooter {
+    padding: 12px 20px; display: flex; gap: 10px;
+    border-top: 1px solid var(--gray-200); flex-shrink: 0; background: var(--white);
+  }
+  .btn {
+    flex: 1; padding: 13px; border-radius: 24px;
+    font-family: 'Open Sans', sans-serif; font-size: 14px; font-weight: 600;
+    cursor: pointer; text-align: center; border: none;
+    transition: all 0.15s; letter-spacing: 0.3px; text-transform: uppercase;
+  }
+  .btn-out { background: var(--white); border: 2px solid var(--teal-500); color: var(--teal-600); }
+  .btn-out:hover { background: var(--teal-50); }
+  .btn-pri { background: var(--teal-500); color: var(--white); border: 2px solid var(--teal-500); }
+  .btn-pri:hover { background: var(--teal-700); border-color: var(--teal-700); }
+  .btn-pri:active { transform: scale(0.98); }
+  .btn:disabled, .btn-off {
+    background: var(--gray-200)!important; color: var(--gray-400)!important;
+    cursor: not-allowed; border: 2px solid var(--gray-200)!important; transform: none!important;
+  }
+
+  .help-bar {
+    background: var(--navy-800); color: rgba(255,255,255,0.8);
+    text-align: center; padding: 10px; font-size: 12px; flex-shrink: 0;
+  }
+  .help-bar a { color: var(--teal-200); text-decoration: none; font-weight: 600; }
+
+  /* Panels */
+  .spanel { display: none; flex-direction: column; flex: 1; min-height: 0; animation: sIn 0.3s ease-out; }
+  .spanel.on { display: flex; }
+  @keyframes sIn { from{opacity:0;transform:translateX(16px)} to{opacity:1;transform:translateX(0)} }
+  .spanel.rev { animation-name: sBack; }
+  @keyframes sBack { from{opacity:0;transform:translateX(-16px)} to{opacity:1;transform:translateX(0)} }
+
+  /* ===== STEP 1 ===== */
+  .ins p { font-size: 13.5px; color: var(--gray-600); margin-bottom: 14px; line-height: 1.6; }
+  .tips { list-style: none; margin-bottom: 16px; }
+  .tips li {
+    font-size: 13px; color: var(--gray-600); padding: 6px 0 6px 24px;
+    position: relative; line-height: 1.5;
+  }
+  .tips li::before {
+    content: ""; position: absolute; left: 4px; top: 12px;
+    width: 10px; height: 10px; border-radius: 50%; background: var(--lime-500);
+  }
+  .fnote {
+    background: var(--gray-50); border: 1px solid var(--gray-200);
+    border-radius: var(--radius-md); padding: 12px 14px;
+    font-size: 12px; color: var(--gray-600); line-height: 1.7;
+  }
+  .fnote strong { color: var(--gray-700); }
+
+  /* ===== STEP 2: Body map ===== */
+  .bm-wrap { display: flex; flex-direction: column; align-items: center; }
+  /*
+    Aspect-ratio matches SVG viewBox (320×430).
+    Wound points use percentage left/top so they always
+    sit on the silhouette at any rendered size.
+  */
+  .bm {
+    position: relative; width: 100%; max-width: 360px;
+    aspect-ratio: 320 / 430;
+  }
+  .bm svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .wp {
+    position: absolute; width: 26px; height: 26px;
+    margin-left: -13px; margin-top: -13px;
+    border-radius: 50%; border: 2px solid var(--gray-300);
+    background: var(--white); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    z-index: 2; transition: all 0.15s; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .wp::after {
+    content: ""; width: 8px; height: 8px; border-radius: 50%;
+    background: var(--gray-300); transition: all 0.15s;
+  }
+  .wp:hover {
+    border-color: var(--teal-400); transform: scale(1.18);
+    box-shadow: 0 0 0 4px rgba(0,151,169,0.12);
+  }
+  .wp:hover::after { background: var(--teal-400); }
+  .wp.sel {
+    border-color: var(--teal-500); background: var(--teal-50);
+    box-shadow: 0 0 0 4px rgba(0,151,169,0.18);
+  }
+  .wp.sel::after { background: var(--teal-600); }
+  .wpt {
+    position: absolute; bottom: calc(100% + 6px); left: 50%;
+    transform: translateX(-50%); background: var(--navy-800); color: var(--white);
+    font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 4px;
+    white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity 0.12s;
+  }
+  .wpt::after {
+    content: ""; position: absolute; top: 100%; left: 50%;
+    transform: translateX(-50%); border: 4px solid transparent; border-top-color: var(--navy-800);
+  }
+  .wp:hover .wpt { opacity: 1; }
+  .slbl {
+    position: absolute; font-size: 10px; font-weight: 700;
+    color: var(--gray-400); letter-spacing: 0.8px; text-transform: uppercase;
+  }
+  .selcnt { text-align: center; margin-top: 10px; font-size: 13px; color: var(--gray-500); min-height: 20px; }
+  .selcnt strong { color: var(--teal-600); font-weight: 700; }
+
+  /* ===== STEP 3 ===== */
+  .wlb { margin-bottom: 16px; border: 1px solid var(--gray-200); border-radius: var(--radius-md); overflow: hidden; }
+  .wlh {
+    background: var(--gray-50); padding: 11px 14px; font-size: 14px; font-weight: 600;
+    color: var(--navy-800); display: flex; align-items: center; gap: 8px;
+    border-bottom: 1px solid var(--gray-200);
+  }
+  .wlh .ld { width: 8px; height: 8px; border-radius: 50%; background: var(--teal-500); flex-shrink: 0; }
+  .wlh .ls {
+    margin-left: auto; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 10px;
+  }
+  .ls.inc { background: var(--red-100); color: var(--red-600); }
+  .ls.ok { background: var(--lime-100); color: var(--lime-600); }
+  .wlc { padding: 14px; }
+  .uz {
+    border: 2px dashed var(--gray-300); border-radius: var(--radius-md);
+    padding: 22px 16px; text-align: center; cursor: pointer;
+    transition: all 0.2s; background: var(--gray-50); margin-bottom: 12px;
+  }
+  .uz:hover, .uz.dov { border-color: var(--teal-500); background: var(--teal-50); }
+  .uz .ui { font-size: 28px; margin-bottom: 4px; opacity: 0.4; }
+  .uz .ul { font-size: 14px; font-weight: 600; color: var(--teal-600); }
+  .uz .uh { font-size: 11px; color: var(--gray-400); margin-top: 4px; }
+  .ts { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .th {
+    width: 64px; height: 64px; border-radius: var(--radius-sm);
+    background: var(--gray-100); position: relative; overflow: hidden;
+    animation: tp 0.25s ease-out;
+  }
+  @keyframes tp { from{opacity:0;transform:scale(.85)} to{opacity:1;transform:scale(1)} }
+  .th img { width: 100%; height: 100%; object-fit: cover; }
+  .th .rb {
+    position: absolute; top: 3px; right: 3px; width: 20px; height: 20px;
+    border-radius: 50%; background: rgba(0,0,0,0.55); color: var(--white);
+    font-size: 12px; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; border: none; opacity: 0; transition: opacity 0.15s;
+    font-weight: 700; line-height: 1;
+  }
+  .th:hover .rb { opacity: 1; }
+  .idb { border: 1px solid var(--gray-200); border-radius: var(--radius-sm); margin-bottom: 8px; overflow: hidden; }
+  .idt {
+    display: flex; align-items: center; gap: 8px; padding: 10px 12px;
+    background: var(--gray-50); cursor: pointer; border: none; width: 100%;
+    text-align: left; font-family: inherit; font-size: 12px; font-weight: 600;
+    color: var(--gray-600); transition: background 0.15s;
+  }
+  .idt:hover { background: var(--gray-100); }
+  .idt .dc { margin-left: auto; transition: transform 0.2s; font-size: 10px; color: var(--gray-400); }
+  .idt[aria-expanded="true"] .dc { transform: rotate(180deg); }
+  .idt .ds { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .ds.e { background: var(--gray-300); }
+  .ds.p { background: var(--amber-600); }
+  .ds.f { background: var(--lime-500); }
+  .idf { padding: 12px; display: none; border-top: 1px solid var(--gray-100); }
+  .idf.op { display: block; }
+  .fr { margin-bottom: 12px; }
+  .fr:last-child { margin-bottom: 0; }
+  .fr label.fl { display: block; font-size: 12px; font-weight: 600; color: var(--gray-600); margin-bottom: 5px; }
+  .ot { color: var(--gray-400); font-weight: 400; font-style: italic; font-size: 11px; }
+  .fr input[type="text"], .fr input[type="number"], .fr input[type="date"] {
+    width: 100%; padding: 9px 11px; border: 1px solid var(--gray-300);
+    border-radius: var(--radius-sm); font-family: 'Open Sans', sans-serif;
+    font-size: 13px; color: var(--gray-900); outline: none; background: var(--white);
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .fr input:focus, .fr textarea:focus {
+    border-color: var(--teal-500); box-shadow: 0 0 0 3px rgba(0,151,169,0.12);
+  }
+  .fr textarea {
+    width: 100%; padding: 9px 11px; border: 1px solid var(--gray-300);
+    border-radius: var(--radius-sm); font-family: 'Open Sans', sans-serif;
+    font-size: 13px; color: var(--gray-900); outline: none;
+    resize: vertical; min-height: 52px; transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .rg { display: flex; border: 1px solid var(--gray-300); border-radius: var(--radius-sm); overflow: hidden; }
+  .rg label {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    padding: 8px 12px; font-size: 13px; color: var(--gray-600);
+    cursor: pointer; transition: all 0.15s; border-right: 1px solid var(--gray-300);
+    background: var(--white); font-weight: 500;
+  }
+  .rg label:last-child { border-right: none; }
+  .rg label:has(input:checked) { background: var(--teal-50); color: var(--teal-700); font-weight: 600; }
+  .rg input[type="radio"] { display: none; }
+  .vm { font-size: 12px; color: var(--red-600); margin-top: 6px; }
+
+  /* ===== STEP 4 ===== */
+  .rlb { margin-bottom: 20px; }
+  .rlh {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 0 8px; border-bottom: 2px solid var(--teal-500); margin-bottom: 10px;
+  }
+  .rlh h3 { font-size: 14px; font-weight: 700; color: var(--navy-800); }
+  .ric { font-size: 11px; color: var(--gray-500); font-weight: 600; background: var(--gray-100); padding: 2px 10px; border-radius: 10px; }
+  .rc {
+    display: flex; gap: 12px; padding: 10px;
+    border: 1px solid var(--gray-200); border-radius: var(--radius-md); margin-bottom: 8px;
+  }
+  .rtb { width: 56px; height: 56px; border-radius: var(--radius-sm); background: var(--gray-100); flex-shrink: 0; overflow: hidden; }
+  .rtb img { width: 100%; height: 100%; object-fit: cover; }
+  .rd { flex: 1; font-size: 12px; color: var(--gray-600); line-height: 1.7; }
+  .rd .rn { font-size: 12.5px; font-weight: 600; color: var(--navy-800); margin-bottom: 2px; }
+  .rfl {
+    color: var(--gray-400); display: inline-block; min-width: 72px;
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px; font-weight: 600;
+  }
+
+  /* ===== STEP 5 ===== */
+  .sc { text-align: center; padding: 40px 20px; }
+  .si {
+    width: 72px; height: 72px; border-radius: 50%; background: var(--lime-100);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 20px; animation: popIn 0.5s cubic-bezier(0.175,0.885,0.32,1.275);
+  }
+  @keyframes popIn { 0%{transform:scale(0);opacity:0} 100%{transform:scale(1);opacity:1} }
+  .si svg { width: 36px; height: 36px; }
+  .sc h2 { font-size: 20px; font-weight: 700; color: var(--navy-800); margin-bottom: 8px; }
+  .sc p { font-size: 13.5px; color: var(--gray-500); line-height: 1.6; max-width: 280px; margin: 0 auto; }
+  .ss {
+    background: var(--gray-50); border: 1px solid var(--gray-200);
+    border-radius: var(--radius-md); padding: 16px; margin-top: 24px;
+    text-align: left; font-size: 13px; color: var(--gray-600); line-height: 1.8;
+  }
+  .ss strong { color: var(--gray-700); }
+
+  /* Copy overlay */
+  .cov {
+    display: none; position: absolute; inset: 0;
+    background: rgba(0,0,0,0.4); z-index: 100;
+    align-items: center; justify-content: center; backdrop-filter: blur(2px);
+  }
+  .cov.vis { display: flex; animation: fi 0.2s; }
+  @keyframes fi { from{opacity:0} to{opacity:1} }
+  .cdlg {
+    background: var(--white); border-radius: var(--radius-lg);
+    padding: 22px 20px; width: 90%; max-width: 320px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.16); animation: dp 0.25s ease-out;
+  }
+  @keyframes dp { from{transform:scale(.95) translateY(10px);opacity:0} to{transform:scale(1) translateY(0);opacity:1} }
+  .cdlg h3 { font-size: 15px; font-weight: 700; color: var(--navy-800); margin-bottom: 12px; }
+  .cpv {
+    background: var(--gray-50); border: 1px solid var(--gray-200);
+    border-radius: var(--radius-sm); padding: 12px; margin-bottom: 16px;
+    font-size: 12px; color: var(--gray-600); line-height: 1.8;
+  }
+  .cpv strong { color: var(--gray-700); }
+  .ca { display: flex; gap: 8px; }
+  .ca .btn { font-size: 13px; padding: 10px; }
+  .cpchk { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; font-size: 12.5px; color: var(--gray-700); cursor: pointer; }
+  .cpchk input { width: 16px; height: 16px; accent-color: var(--primary); cursor: pointer; }
+
+  .dbody::-webkit-scrollbar { width: 4px; }
+  .dbody::-webkit-scrollbar-track { background: transparent; }
+  .dbody::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 2px; }
+</style>
 </head>
 <body>
-  <div id="root"></div>
-  <script type="text/babel">
-const { useState, useCallback } = React;
 
-const COLORS = {
-  navy900: "#131f2e", navy800: "#1a2b3d", navy700: "#243a50",
-  teal700: "#007a8a", teal600: "#00889b", teal500: "#0097a9",
-  teal400: "#1eafc2", teal200: "#8ed5e0", teal50: "#e8f6f9",
-  lime600: "#6fa62d", lime500: "#8cc63f", lime100: "#ecf5de",
-  gray900: "#1a1a1a", gray700: "#3a3f4a", gray600: "#555b66",
-  gray500: "#6b7280", gray400: "#9ca3af", gray300: "#ced2d8",
-  gray200: "#e2e5ea", gray100: "#f0f2f5", gray50: "#f8f9fb",
-  red600: "#c0392b", red100: "#fde8e8", amber600: "#d4a017",
-  white: "#ffffff",
-};
-
-const WOUND_POINTS = [
-  { id: "head-top",    label: "Head (Top)",          x: 50,   y: 1.9  },
-  { id: "head-front",  label: "Head (Front)",         x: 50,   y: 8.1  },
-  { id: "neck",        label: "Neck",                 x: 50,   y: 14.4 },
-  { id: "r-shoulder",  label: "Right Shoulder",       x: 37.5, y: 17.7 },
-  { id: "l-shoulder",  label: "Left Shoulder",        x: 62.5, y: 17.7 },
-  { id: "r-uchest",    label: "Right Upper Chest",    x: 44.4, y: 21.4 },
-  { id: "l-uchest",    label: "Left Upper Chest",     x: 55.6, y: 21.4 },
-  { id: "r-uarm",      label: "Right Upper Arm",      x: 29,   y: 21.4 },
-  { id: "l-uarm",      label: "Left Upper Arm",       x: 71,   y: 21.4 },
-  { id: "r-abd",       label: "Right Abdomen",        x: 44.4, y: 30.2 },
-  { id: "l-abd",       label: "Left Abdomen",         x: 55.6, y: 30.2 },
-  { id: "r-farm",      label: "Right Forearm",        x: 14.7, y: 30   },
-  { id: "l-farm",      label: "Left Forearm",         x: 85.3, y: 30   },
-  { id: "r-labd",      label: "Right Lower Abdomen",  x: 43.8, y: 39.5 },
-  { id: "l-labd",      label: "Left Lower Abdomen",   x: 56.2, y: 39.5 },
-  { id: "r-hand",      label: "Right Hand",           x: 8.1,  y: 36.7 },
-  { id: "l-hand",      label: "Left Hand",            x: 91.9, y: 36.7 },
-  { id: "r-hip",       label: "Right Hip",            x: 45,   y: 47   },
-  { id: "l-hip",       label: "Left Hip",             x: 55,   y: 47   },
-  { id: "r-uthigh",    label: "Right Upper Thigh",    x: 44.7, y: 58.1 },
-  { id: "l-uthigh",    label: "Left Upper Thigh",     x: 55.3, y: 58.1 },
-  { id: "r-mthigh",    label: "Right Mid Thigh",      x: 44.1, y: 67.4 },
-  { id: "l-mthigh",    label: "Left Mid Thigh",       x: 55.9, y: 67.4 },
-  { id: "r-knee",      label: "Right Knee",           x: 43.8, y: 73.5 },
-  { id: "l-knee",      label: "Left Knee",            x: 56.2, y: 73.5 },
-  { id: "r-shin",      label: "Right Shin",           x: 43.4, y: 82.6 },
-  { id: "l-shin",      label: "Left Shin",            x: 56.6, y: 82.6 },
-  { id: "r-ankle",     label: "Right Ankle",          x: 43.1, y: 91.2 },
-  { id: "l-ankle",     label: "Left Ankle",           x: 56.9, y: 91.2 },
-];
-
-const STEPS = ["Tips", "Location", "Upload", "Review"];
-
-const emptyImage = () => ({ file: null, dataUrl: null, name: "", woundName: "", date: "", reopened: null, details: "" });
-
-// ── Shared UI ──────────────────────────────────────────────────────────────
-
-const Btn = ({ children, variant = "primary", disabled, onClick, style }) => {
-  const base = {
-    flex: 1, padding: "13px", borderRadius: 24, fontFamily: "inherit",
-    fontSize: 14, fontWeight: 600, cursor: disabled ? "not-allowed" : "pointer",
-    textAlign: "center", border: "none", transition: "all 0.15s",
-    letterSpacing: "0.3px", textTransform: "uppercase",
-  };
-  const variants = {
-    primary: { background: disabled ? COLORS.gray200 : COLORS.teal500, color: disabled ? COLORS.gray400 : COLORS.white, border: `2px solid ${disabled ? COLORS.gray200 : COLORS.teal500}` },
-    outline: { background: disabled ? COLORS.gray200 : COLORS.white, color: disabled ? COLORS.gray400 : COLORS.teal600, border: `2px solid ${disabled ? COLORS.gray200 : COLORS.teal500}` },
-  };
-  return <button style={{ ...base, ...variants[variant], ...style }} disabled={disabled} onClick={onClick}>{children}</button>;
-};
-
-const HelpBar = () => (
-  <div style={{ background: COLORS.navy800, color: "rgba(255,255,255,0.8)", textAlign: "center", padding: 10, fontSize: 12, flexShrink: 0 }}>
-    Need help? Contact your pharmacist for assistance.
+<div class="app-frame" id="app">
+  <div class="top-bar">
+    <span class="top-bar-title">Wound Tracking</span>
+    <button class="close-x" onclick="confirmClose()">&times;</button>
   </div>
-);
-
-const Footer = ({ children }) => (
-  <div style={{ padding: "12px 20px", display: "flex", gap: 10, borderTop: `1px solid ${COLORS.gray200}`, flexShrink: 0, background: COLORS.white }}>
-    {children}
+  <div class="progress-steps" id="psteps">
+    <div class="progress-step active" data-step="1" onclick="goStep(this)"><div class="step-bar"></div><span class="step-text">Tips</span></div>
+    <div class="progress-step" data-step="2" onclick="goStep(this)"><div class="step-bar"></div><span class="step-text">Location</span></div>
+    <div class="progress-step" data-step="3" onclick="goStep(this)"><div class="step-bar"></div><span class="step-text">Upload</span></div>
+    <div class="progress-step" data-step="4" onclick="goStep(this)"><div class="step-bar"></div><span class="step-text">Review</span></div>
   </div>
-);
 
-const Label = ({ children }) => (
-  <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: COLORS.gray600, marginBottom: 5 }}>{children}</label>
-);
-
-const Input = ({ type = "text", value, onChange, placeholder, min, max }) => (
-  <input
-    type={type} value={value} onChange={e => onChange(e.target.value)}
-    placeholder={placeholder} min={min} max={max}
-    style={{
-      width: "100%", padding: "9px 11px", border: `1px solid ${COLORS.gray300}`,
-      borderRadius: 6, fontFamily: "inherit", fontSize: 13, color: COLORS.gray900,
-      outline: "none", background: COLORS.white,
-    }}
-    onFocus={e => { e.target.style.borderColor = COLORS.teal500; e.target.style.boxShadow = `0 0 0 3px rgba(0,151,169,0.12)`; }}
-    onBlur={e => { e.target.style.borderColor = COLORS.gray300; e.target.style.boxShadow = "none"; }}
-  />
-);
-
-const RadioGroup = ({ name, value, onChange }) => (
-  <div style={{ display: "flex", border: `1px solid ${COLORS.gray300}`, borderRadius: 6, overflow: "hidden" }}>
-    {["Yes", "No"].map(opt => {
-      const v = opt === "Yes" ? "y" : "n";
-      const active = value === v;
-      return (
-        <label key={v} style={{
-          flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
-          padding: "8px 12px", fontSize: 13, color: active ? COLORS.teal700 : COLORS.gray600,
-          cursor: "pointer", background: active ? COLORS.teal50 : COLORS.white,
-          fontWeight: active ? 600 : 500,
-          borderRight: opt === "Yes" ? `1px solid ${COLORS.gray300}` : "none",
-        }}>
-          <input type="radio" name={name} value={v} checked={active} onChange={() => onChange(v)} style={{ display: "none" }} />
-          {opt}
-        </label>
-      );
-    })}
-  </div>
-);
-
-// ── Step 1: Tips ───────────────────────────────────────────────────────────
-
-const StepTips = ({ onNext }) => (
-  <>
-    <div style={{ padding: "16px 20px 4px", flexShrink: 0 }}>
-      <h2 style={{ fontSize: 20, fontWeight: 700, color: COLORS.navy800 }}>Upload Progress Photos</h2>
-    </div>
-    <p style={{ padding: "4px 20px 14px", fontSize: 13, color: COLORS.gray500, lineHeight: 1.4 }}>
-      Review these tips, then continue to select wound locations.
-    </p>
-    <div style={{ padding: "0 20px 20px", flex: 1, overflowY: "auto" }}>
-      <p style={{ fontSize: 13.5, color: COLORS.gray600, marginBottom: 14, lineHeight: 1.6 }}>
-        Upload clear images of your wounds so you can track healing over time and share updates with your care team.
-      </p>
-      <p style={{ fontWeight: 600, fontSize: 13.5, color: COLORS.navy800, marginBottom: 10 }}>Tips for best results:</p>
-      <ul style={{ listStyle: "none", marginBottom: 16 }}>
-        {[
-          "Use good, even lighting — avoid harsh shadows",
-          "Hold your camera 6–12 inches from the wound",
-          "Include a size reference (coin, ruler) if possible",
-          "Keep the wound centered in the frame",
-          "Take multiple angles for the same wound",
-        ].map((tip, i) => (
-          <li key={i} style={{ fontSize: 13, color: COLORS.gray600, padding: "6px 0 6px 24px", position: "relative", lineHeight: 1.5 }}>
-            <span style={{ position: "absolute", left: 4, top: 12, width: 10, height: 10, borderRadius: "50%", background: COLORS.lime500, display: "block" }} />
-            {tip}
-          </li>
-        ))}
+  <!-- STEP 1 -->
+  <div class="spanel on" id="s1">
+    <div class="dtitle"><h2>Upload Progress Photos</h2></div>
+    <div class="dsub">Review these tips, then continue to select wound locations.</div>
+    <div class="dbody"><div class="ins">
+      <p>Upload clear images of your wounds so you can track healing over time and share updates with your care team.</p>
+      <p style="font-weight:600;font-size:13.5px;color:var(--navy-800)">Tips for best results:</p>
+      <ul class="tips">
+        <li>Use good, even lighting — avoid harsh shadows</li>
+        <li>Hold your camera 6–12 inches from the wound</li>
+        <li>Include a size reference (coin, ruler) if possible</li>
+        <li>Keep the wound centered in the frame</li>
+        <li>Take multiple angles for the same wound</li>
       </ul>
-      <div style={{ background: COLORS.gray50, border: `1px solid ${COLORS.gray200}`, borderRadius: 8, padding: "12px 14px", fontSize: 12, color: COLORS.gray600, lineHeight: 1.7 }}>
-        <strong style={{ color: COLORS.gray700 }}>Accepted formats:</strong> JPEG, PNG, HEIC/HEIF, WebP<br />
-        <strong style={{ color: COLORS.gray700 }}>Max file size:</strong> 5 MB per image
-      </div>
+      <div class="fnote"><strong>Accepted formats:</strong> JPEG, PNG, HEIC/HEIF, WebP<br><strong>Max file size:</strong> 5 MB per image</div>
+    </div></div>
+    <div class="dfooter">
+      <button class="btn btn-out" disabled>&lsaquo; Previous</button>
+      <button class="btn btn-pri" onclick="go(2)">Next &rsaquo;</button>
     </div>
-    <Footer>
-      <Btn variant="outline" disabled>‹ Previous</Btn>
-      <Btn onClick={onNext}>Next ›</Btn>
-    </Footer>
-    <HelpBar />
-  </>
-);
+    <div class="help-bar">Need help? Contact your pharmacist</div>
+  </div>
 
-// ── Step 2: Body Map ───────────────────────────────────────────────────────
+  <!-- STEP 2 -->
+  <div class="spanel" id="s2">
+    <div class="dtitle"><h2>Select Wound Locations</h2></div>
+    <div class="dsub">Tap each location where you need to photograph a wound.</div>
+    <div class="dbody">
+      <div class="bm-wrap">
+        <!--
+          viewBox 320×430.  Arms are spread at ~30° below horizontal.
+          Body drawn with thick rounded lines for clarity.
+          Wound-point %: left = cx/320*100, top = cy/430*100.
+        -->
+        <div class="bm" id="bodyMap">
+          <svg viewBox="0 0 320 430" xmlns="http://www.w3.org/2000/svg">
+            <defs><style>
+              .bod { fill: none; stroke: #c0c8d2; stroke-linecap: round; }
+            </style></defs>
+            <!-- Head -->
+            <ellipse cx="160" cy="30" rx="24" ry="28" fill="#c0c8d2"/>
+            <!-- Neck -->
+            <line class="bod" x1="160" y1="56" x2="160" y2="68" stroke-width="20"/>
+            <!-- Torso -->
+            <rect x="125" y="65" width="70" height="128" rx="16" fill="#c0c8d2"/>
+            <!-- Pelvis -->
+            <ellipse cx="160" cy="198" rx="36" ry="22" fill="#c0c8d2"/>
+            <!-- Right arm (viewer's left) -->
+            <line class="bod" x1="122" y1="76" x2="64" y2="108" stroke-width="24"/>
+            <line class="bod" x1="64" y1="108" x2="30" y2="150" stroke-width="20"/>
+            <ellipse cx="26" cy="158" rx="12" ry="12" fill="#c0c8d2"/>
+            <!-- Left arm (viewer's right) -->
+            <line class="bod" x1="198" y1="76" x2="256" y2="108" stroke-width="24"/>
+            <line class="bod" x1="256" y1="108" x2="290" y2="150" stroke-width="20"/>
+            <ellipse cx="294" cy="158" rx="12" ry="12" fill="#c0c8d2"/>
+            <!-- Right leg (viewer's left) -->
+            <line class="bod" x1="146" y1="206" x2="140" y2="310" stroke-width="30"/>
+            <line class="bod" x1="140" y1="310" x2="138" y2="392" stroke-width="24"/>
+            <ellipse cx="137" cy="408" rx="13" ry="7" fill="#c0c8d2"/>
+            <!-- Left leg (viewer's right) -->
+            <line class="bod" x1="174" y1="206" x2="180" y2="310" stroke-width="30"/>
+            <line class="bod" x1="180" y1="310" x2="182" y2="392" stroke-width="24"/>
+            <ellipse cx="183" cy="408" rx="13" ry="7" fill="#c0c8d2"/>
+          </svg>
 
-const BodyMap = ({ selected, onToggle }) => {
-  const [hovered, setHovered] = useState(null);
-  return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-      <div style={{ position: "relative", width: "100%", maxWidth: 360, aspectRatio: "320 / 430" }}>
-        <svg viewBox="0 0 320 430" xmlns="http://www.w3.org/2000/svg" style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}>
-          <ellipse cx="160" cy="30" rx="24" ry="28" fill="#c0c8d2"/>
-          <line x1="160" y1="56" x2="160" y2="68" stroke="#c0c8d2" strokeWidth="20" strokeLinecap="round"/>
-          <rect x="125" y="65" width="70" height="128" rx="16" fill="#c0c8d2"/>
-          <ellipse cx="160" cy="198" rx="36" ry="22" fill="#c0c8d2"/>
-          <line x1="122" y1="76" x2="64" y2="108" stroke="#c0c8d2" strokeWidth="24" strokeLinecap="round"/>
-          <line x1="64" y1="108" x2="30" y2="150" stroke="#c0c8d2" strokeWidth="20" strokeLinecap="round"/>
-          <ellipse cx="26" cy="158" rx="12" ry="12" fill="#c0c8d2"/>
-          <line x1="198" y1="76" x2="256" y2="108" stroke="#c0c8d2" strokeWidth="24" strokeLinecap="round"/>
-          <line x1="256" y1="108" x2="290" y2="150" stroke="#c0c8d2" strokeWidth="20" strokeLinecap="round"/>
-          <ellipse cx="294" cy="158" rx="12" ry="12" fill="#c0c8d2"/>
-          <line x1="146" y1="206" x2="140" y2="310" stroke="#c0c8d2" strokeWidth="30" strokeLinecap="round"/>
-          <line x1="140" y1="310" x2="138" y2="392" stroke="#c0c8d2" strokeWidth="24" strokeLinecap="round"/>
-          <ellipse cx="137" cy="408" rx="13" ry="7" fill="#c0c8d2"/>
-          <line x1="174" y1="206" x2="180" y2="310" stroke="#c0c8d2" strokeWidth="30" strokeLinecap="round"/>
-          <line x1="180" y1="310" x2="182" y2="392" stroke="#c0c8d2" strokeWidth="24" strokeLinecap="round"/>
-          <ellipse cx="183" cy="408" rx="13" ry="7" fill="#c0c8d2"/>
-        </svg>
+          <!-- Head -->
+          <div class="wp" data-location="Head (Top)" style="left:50%;top:1.9%"><span class="wpt">Head (Top)</span></div>
+          <div class="wp" data-location="Head (Front)" style="left:50%;top:8.1%"><span class="wpt">Head (Front)</span></div>
+          <!-- Neck -->
+          <div class="wp" data-location="Neck" style="left:50%;top:14.4%"><span class="wpt">Neck</span></div>
+          <!-- Shoulders — on the shoulder junction -->
+          <div class="wp" data-location="Right Shoulder" style="left:37.5%;top:17.7%"><span class="wpt">Right Shoulder</span></div>
+          <div class="wp" data-location="Left Shoulder" style="left:62.5%;top:17.7%"><span class="wpt">Left Shoulder</span></div>
+          <!-- Upper chest -->
+          <div class="wp" data-location="Right Upper Chest" style="left:44.4%;top:21.4%"><span class="wpt">Right Upper Chest</span></div>
+          <div class="wp" data-location="Left Upper Chest" style="left:55.6%;top:21.4%"><span class="wpt">Left Upper Chest</span></div>
+          <!-- Upper arms — midpoint of upper-arm line -->
+          <div class="wp" data-location="Right Upper Arm" style="left:29%;top:21.4%"><span class="wpt">Right Upper Arm</span></div>
+          <div class="wp" data-location="Left Upper Arm" style="left:71%;top:21.4%"><span class="wpt">Left Upper Arm</span></div>
+          <!-- Abdomen -->
+          <div class="wp" data-location="Right Abdomen" style="left:44.4%;top:30.2%"><span class="wpt">Right Abdomen</span></div>
+          <div class="wp" data-location="Left Abdomen" style="left:55.6%;top:30.2%"><span class="wpt">Left Abdomen</span></div>
+          <!-- Forearms — midpoint of forearm line -->
+          <div class="wp" data-location="Right Forearm" style="left:14.7%;top:30%"><span class="wpt">Right Forearm</span></div>
+          <div class="wp" data-location="Left Forearm" style="left:85.3%;top:30%"><span class="wpt">Left Forearm</span></div>
+          <!-- Lower abdomen -->
+          <div class="wp" data-location="Right Lower Abdomen" style="left:43.8%;top:39.5%"><span class="wpt">Right Lower Abdomen</span></div>
+          <div class="wp" data-location="Left Lower Abdomen" style="left:56.2%;top:39.5%"><span class="wpt">Left Lower Abdomen</span></div>
+          <!-- Hands -->
+          <div class="wp" data-location="Right Hand" style="left:8.1%;top:36.7%"><span class="wpt">Right Hand</span></div>
+          <div class="wp" data-location="Left Hand" style="left:91.9%;top:36.7%"><span class="wpt">Left Hand</span></div>
+          <!-- Hips -->
+          <div class="wp" data-location="Right Hip" style="left:45%;top:47%"><span class="wpt">Right Hip</span></div>
+          <div class="wp" data-location="Left Hip" style="left:55%;top:47%"><span class="wpt">Left Hip</span></div>
+          <!-- Upper thighs -->
+          <div class="wp" data-location="Right Upper Thigh" style="left:44.7%;top:58.1%"><span class="wpt">Right Upper Thigh</span></div>
+          <div class="wp" data-location="Left Upper Thigh" style="left:55.3%;top:58.1%"><span class="wpt">Left Upper Thigh</span></div>
+          <!-- Mid thighs -->
+          <div class="wp" data-location="Right Mid Thigh" style="left:44.1%;top:67.4%"><span class="wpt">Right Mid Thigh</span></div>
+          <div class="wp" data-location="Left Mid Thigh" style="left:55.9%;top:67.4%"><span class="wpt">Left Mid Thigh</span></div>
+          <!-- Knees -->
+          <div class="wp" data-location="Right Knee" style="left:43.8%;top:73.5%"><span class="wpt">Right Knee</span></div>
+          <div class="wp" data-location="Left Knee" style="left:56.2%;top:73.5%"><span class="wpt">Left Knee</span></div>
+          <!-- Shins -->
+          <div class="wp" data-location="Right Shin" style="left:43.4%;top:82.6%"><span class="wpt">Right Shin</span></div>
+          <div class="wp" data-location="Left Shin" style="left:56.6%;top:82.6%"><span class="wpt">Left Shin</span></div>
+          <!-- Ankles -->
+          <div class="wp" data-location="Right Ankle" style="left:43.1%;top:91.2%"><span class="wpt">Right Ankle</span></div>
+          <div class="wp" data-location="Left Ankle" style="left:56.9%;top:91.2%"><span class="wpt">Left Ankle</span></div>
 
-        {WOUND_POINTS.map(pt => {
-          const isSel = selected.has(pt.label);
-          const isHov = hovered === pt.id;
-          return (
-            <div
-              key={pt.id}
-              onClick={() => onToggle(pt.label)}
-              onMouseEnter={() => setHovered(pt.id)}
-              onMouseLeave={() => setHovered(null)}
-              style={{
-                position: "absolute",
-                left: `${pt.x}%`, top: `${pt.y}%`,
-                width: 26, height: 26,
-                marginLeft: -13, marginTop: -13,
-                borderRadius: "50%",
-                border: `2px solid ${isSel ? COLORS.teal500 : isHov ? COLORS.teal400 : COLORS.gray300}`,
-                background: isSel ? COLORS.teal50 : COLORS.white,
-                cursor: "pointer",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                zIndex: 2,
-                transform: isHov && !isSel ? "scale(1.18)" : "scale(1)",
-                boxShadow: isSel ? `0 0 0 4px rgba(0,151,169,0.18)` : isHov ? `0 0 0 4px rgba(0,151,169,0.12)` : "0 1px 3px rgba(0,0,0,0.06)",
-                transition: "all 0.15s",
-              }}
-            >
-              <span style={{
-                width: 8, height: 8, borderRadius: "50%",
-                background: isSel ? COLORS.teal600 : isHov ? COLORS.teal400 : COLORS.gray300,
-                display: "block", transition: "all 0.15s",
-              }} />
-              {isHov && (
-                <div style={{
-                  position: "absolute", bottom: "calc(100% + 6px)", left: "50%",
-                  transform: "translateX(-50%)", background: COLORS.navy800, color: COLORS.white,
-                  fontSize: 11, fontWeight: 600, padding: "3px 8px", borderRadius: 4,
-                  whiteSpace: "nowrap", pointerEvents: "none", zIndex: 10,
-                }}>
-                  {pt.label}
-                  <span style={{
-                    position: "absolute", top: "100%", left: "50%",
-                    transform: "translateX(-50%)",
-                    border: "4px solid transparent", borderTopColor: COLORS.navy800, display: "block",
-                  }} />
-                </div>
-              )}
-            </div>
-          );
-        })}
-
-        <span style={{ position: "absolute", top: "22%", left: -4, fontSize: 10, fontWeight: 700, color: COLORS.gray400, letterSpacing: "0.8px", textTransform: "uppercase" }}>Right</span>
-        <span style={{ position: "absolute", top: "22%", right: -4, fontSize: 10, fontWeight: 700, color: COLORS.gray400, letterSpacing: "0.8px", textTransform: "uppercase" }}>Left</span>
-      </div>
-
-      <div style={{ textAlign: "center", marginTop: 10, fontSize: 13, color: COLORS.gray500, minHeight: 20 }}>
-        {selected.size === 0
-          ? <span style={{ color: COLORS.gray400 }}>Tap a location to begin</span>
-          : <><strong style={{ color: COLORS.teal600 }}>{selected.size}</strong> location{selected.size > 1 ? "s" : ""} selected</>
-        }
-      </div>
-    </div>
-  );
-};
-
-const StepLocation = ({ selected, onToggle, onBack, onNext }) => (
-  <>
-    <div style={{ padding: "16px 20px 4px", flexShrink: 0 }}>
-      <h2 style={{ fontSize: 20, fontWeight: 700, color: COLORS.navy800 }}>Select Wound Locations</h2>
-    </div>
-    <p style={{ padding: "4px 20px 14px", fontSize: 13, color: COLORS.gray500, lineHeight: 1.4 }}>
-      Tap each location where you need to photograph a wound.
-    </p>
-    <div style={{ padding: "0 20px 20px", flex: 1, overflowY: "auto" }}>
-      <BodyMap selected={selected} onToggle={onToggle} />
-    </div>
-    <Footer>
-      <Btn variant="outline" onClick={onBack}>‹ Previous</Btn>
-      <Btn disabled={selected.size === 0} onClick={onNext}>Next ›</Btn>
-    </Footer>
-    <HelpBar />
-  </>
-);
-
-// ── Step 3: Upload ─────────────────────────────────────────────────────────
-
-const DropZone = ({ onFiles }) => {
-  const [dragging, setDragging] = useState(false);
-  const id = Math.random().toString(36).slice(2);
-  return (
-    <div
-      onDragOver={e => { e.preventDefault(); setDragging(true); }}
-      onDragLeave={() => setDragging(false)}
-      onDrop={e => { e.preventDefault(); setDragging(false); onFiles(e.dataTransfer.files); }}
-      onClick={() => document.getElementById(id)?.click()}
-      style={{
-        border: `2px dashed ${dragging ? COLORS.teal500 : COLORS.gray300}`,
-        borderRadius: 8, padding: "22px 16px", textAlign: "center",
-        cursor: "pointer", background: dragging ? COLORS.teal50 : COLORS.gray50,
-        marginBottom: 12, transition: "all 0.2s",
-      }}
-    >
-      <div style={{ fontSize: 28, marginBottom: 4, opacity: 0.4 }}>📷</div>
-      <div style={{ fontSize: 14, fontWeight: 600, color: COLORS.teal600 }}>+ Upload Images</div>
-      <div style={{ fontSize: 11, color: COLORS.gray400, marginTop: 4 }}>Tap to browse or drag &amp; drop</div>
-      <input id={id} type="file" multiple accept="image/*" style={{ display: "none" }} onChange={e => onFiles(e.target.files)} />
-    </div>
-  );
-};
-
-const ImageCard = ({ img, index, locIndex, total, onRemove, onChange, onOfferCopy }) => {
-  const [open, setOpen] = useState(true);
-  const [copyOffered, setCopyOffered] = useState(false);
-  const statusColor = img.date && img.reopened !== null ? COLORS.lime500 : (img.woundName || img.date ? COLORS.amber600 : COLORS.gray300);
-
-  const handleFocus = () => {
-    if (onOfferCopy && !copyOffered && !img.date && img.reopened === null) {
-      setCopyOffered(true);
-      onOfferCopy();
-    }
-  };
-
-  return (
-    <div style={{ border: `1px solid ${COLORS.gray200}`, borderRadius: 6, marginBottom: 8, overflow: "hidden" }}>
-      <button
-        onClick={() => setOpen(o => !o)}
-        style={{
-          display: "flex", alignItems: "center", gap: 8, padding: "10px 12px",
-          background: COLORS.gray50, cursor: "pointer", border: "none", width: "100%",
-          textAlign: "left", fontFamily: "inherit", fontSize: 12, fontWeight: 600, color: COLORS.gray600,
-        }}
-      >
-        <span style={{ width: 6, height: 6, borderRadius: "50%", background: statusColor, flexShrink: 0 }} />
-        Image {index + 1}: {img.name}
-        <span style={{ marginLeft: "auto", fontSize: 10, color: COLORS.gray400, transition: "transform 0.2s", transform: open ? "rotate(180deg)" : "none" }}>▼</span>
-      </button>
-      {open && (
-        <div style={{ padding: 12, borderTop: `1px solid ${COLORS.gray100}` }} onFocus={handleFocus}>
-          <div style={{ marginBottom: 12 }}>
-            <Label>Wound Name <span style={{ color: COLORS.gray400, fontStyle: "italic", fontSize: 11 }}>(optional)</span></Label>
-            <Input value={img.woundName} onChange={v => onChange("woundName", v)} placeholder="e.g. Left shoulder wound" />
-          </div>
-          <div style={{ marginBottom: 12 }}>
-            <Label>Onset Date *</Label>
-            <Input type="date" value={img.date} onChange={v => onChange("date", v)} />
-          </div>
-          <div style={{ marginBottom: 12 }}>
-            <Label>Has this wound reopened? *</Label>
-            <RadioGroup name={`reopen-${locIndex}-${index}`} value={img.reopened} onChange={v => onChange("reopened", v)} />
-          </div>
-          <div>
-            <Label>Additional Details <span style={{ color: COLORS.gray400, fontStyle: "italic", fontSize: 11 }}>(optional)</span></Label>
-            <textarea
-              value={img.details} onChange={e => onChange("details", e.target.value)}
-              placeholder="Any notes..."
-              style={{
-                width: "100%", padding: "9px 11px", border: `1px solid ${COLORS.gray300}`,
-                borderRadius: 6, fontFamily: "inherit", fontSize: 13, color: COLORS.gray900,
-                outline: "none", resize: "vertical", minHeight: 52,
-              }}
-            />
-          </div>
+          <span class="slbl" style="top:22%;left:-4px">Right</span>
+          <span class="slbl" style="top:22%;right:-4px">Left</span>
         </div>
-      )}
-    </div>
-  );
-};
-
-const LocationBlock = ({ location, images, locIndex, onChange, onAddFiles, onRemove, onOfferCopy }) => {
-  const complete = images.length > 0 && images.every(m => m.date && m.reopened !== null);
-  const badge = complete ? "Complete" : images.length > 0 ? `${images.length} img` : "No images";
-
-  return (
-    <div style={{ marginBottom: 16, border: `1px solid ${COLORS.gray200}`, borderRadius: 8, overflow: "hidden" }}>
-      <div style={{
-        background: COLORS.gray50, padding: "11px 14px", fontSize: 14, fontWeight: 600,
-        color: COLORS.navy800, display: "flex", alignItems: "center", gap: 8,
-        borderBottom: `1px solid ${COLORS.gray200}`,
-      }}>
-        <span style={{ width: 8, height: 8, borderRadius: "50%", background: COLORS.teal500, flexShrink: 0 }} />
-        {location}
-        <span style={{
-          marginLeft: "auto", fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 10,
-          background: complete ? COLORS.lime100 : COLORS.red100,
-          color: complete ? COLORS.lime600 : COLORS.red600,
-        }}>{badge}</span>
-      </div>
-      <div style={{ padding: 14 }}>
-        {images.length >= 5 ? (
-          <div style={{ border: `1px solid ${COLORS.gray200}`, borderRadius: 8, padding: "12px 16px", textAlign: "center", marginBottom: 12, background: COLORS.gray50, fontSize: 12, color: COLORS.gray500 }}>
-            Maximum of 5 images per area reached
-          </div>
-        ) : (
-          <DropZone onFiles={files => onAddFiles(locIndex, files)} />
-        )}
-
-        {images.length > 0 && (
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
-            {images.map((img, mi) => (
-              <div key={mi} style={{
-                width: 64, height: 64, borderRadius: 6, background: COLORS.gray100,
-                position: "relative", overflow: "hidden", flexShrink: 0,
-              }}
-                onMouseEnter={e => e.currentTarget.querySelector("button").style.opacity = "1"}
-                onMouseLeave={e => e.currentTarget.querySelector("button").style.opacity = "0"}
-              >
-                <img src={img.dataUrl} alt={img.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                <button onClick={() => onRemove(locIndex, mi)} style={{
-                  position: "absolute", top: 3, right: 3, width: 20, height: 20,
-                  borderRadius: "50%", background: "rgba(0,0,0,0.55)", color: COLORS.white,
-                  fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center",
-                  cursor: "pointer", border: "none", opacity: 0, transition: "opacity 0.15s",
-                  fontWeight: 700, lineHeight: 1,
-                }}>×</button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {images.map((img, mi) => (
-          <ImageCard
-            key={mi} img={img} index={mi} locIndex={locIndex} total={images.length}
-            onRemove={() => onRemove(locIndex, mi)}
-            onChange={(k, v) => onChange(locIndex, mi, k, v)}
-            onOfferCopy={mi > 0 && onOfferCopy ? () => onOfferCopy(locIndex, mi) : undefined}
-          />
-        ))}
-
-        {images.length === 0 && (
-          <div style={{ fontSize: 12, color: COLORS.red600 }}>⚠ At least 1 image required</div>
-        )}
+        <div class="selcnt" id="selcnt"></div>
       </div>
     </div>
-  );
-};
-
-// ── Step 4: Review ─────────────────────────────────────────────────────────
-
-const fmtDate = s => {
-  if (!s) return "—";
-  const d = new Date(s + "T00:00:00");
-  if (isNaN(d)) return s;
-  return `${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}/${String(d.getFullYear()).slice(-2)}`;
-};
-
-const Field = ({ label, value }) => (
-  <span>
-    <span style={{ color: COLORS.gray400, display: "inline-block", minWidth: 72, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.3px", fontWeight: 600 }}>{label}</span>
-    {" "}{value || "—"}
-  </span>
-);
-
-const StepReview = ({ selected, woundData, onBack, onSubmit }) => (
-  <>
-    <div style={{ padding: "16px 20px 4px", flexShrink: 0 }}>
-      <h2 style={{ fontSize: 20, fontWeight: 700, color: COLORS.navy800 }}>Review &amp; Submit</h2>
+    <div class="dfooter">
+      <button class="btn btn-out" onclick="go(1)">&lsaquo; Previous</button>
+      <button class="btn btn-off" id="s2n" disabled onclick="go(3)">Next &rsaquo;</button>
     </div>
-    <p style={{ padding: "4px 20px 14px", fontSize: 13, color: COLORS.gray500, lineHeight: 1.4 }}>
-      Confirm everything looks correct before submitting.
-    </p>
-    <div style={{ padding: "0 20px 20px", flex: 1, overflowY: "auto" }}>
-      {[...selected].map(loc => {
-        const imgs = woundData[loc] || [];
-        return (
-          <div key={loc} style={{ marginBottom: 20 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0 8px", borderBottom: `2px solid ${COLORS.teal500}`, marginBottom: 10 }}>
-              <h3 style={{ fontSize: 14, fontWeight: 700, color: COLORS.navy800 }}>{loc}</h3>
-              <span style={{ fontSize: 11, color: COLORS.gray500, fontWeight: 600, background: COLORS.gray100, padding: "2px 10px", borderRadius: 10 }}>
-                {imgs.length} image{imgs.length !== 1 ? "s" : ""}
-              </span>
-            </div>
-            {imgs.map((img, i) => (
-              <div key={i} style={{ display: "flex", gap: 12, padding: 10, border: `1px solid ${COLORS.gray200}`, borderRadius: 8, marginBottom: 8 }}>
-                <div style={{ width: 56, height: 56, borderRadius: 6, background: COLORS.gray100, flexShrink: 0, overflow: "hidden" }}>
-                  <img src={img.dataUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                </div>
-                <div style={{ flex: 1, fontSize: 12, color: COLORS.gray600, lineHeight: 1.7 }}>
-                  <div style={{ fontSize: 12.5, fontWeight: 600, color: COLORS.navy800, marginBottom: 2 }}>Image {i + 1}: {img.name}</div>
-                  <div><Field label="Name" value={img.woundName} /></div>
-                  <div><Field label="Onset" value={fmtDate(img.date)} /></div>
-                  <div><Field label="Reopened" value={img.reopened === "y" ? "Yes" : img.reopened === "n" ? "No" : null} /></div>
-                  <div><Field label="Details" value={img.details} /></div>
-                </div>
-              </div>
-            ))}
-          </div>
-        );
-      })}
+    <div class="help-bar">Need help? Contact your pharmacist</div>
+  </div>
+
+  <!-- STEP 3 -->
+  <div class="spanel" id="s3">
+    <div class="dtitle"><h2>Upload &amp; Details</h2></div>
+    <div class="dsub">Upload at least one image per location and provide wound details.</div>
+    <div class="dbody" id="upBody"></div>
+    <div class="dfooter">
+      <button class="btn btn-out" onclick="go(2)">&lsaquo; Previous</button>
+      <button class="btn btn-off" id="s3n" disabled onclick="valGo()">Next &rsaquo;</button>
     </div>
-    <Footer>
-      <Btn variant="outline" onClick={onBack}>‹ Previous</Btn>
-      <Btn onClick={onSubmit}>Submit</Btn>
-    </Footer>
-    <HelpBar />
-  </>
-);
+    <div class="help-bar">Need help? Contact your pharmacist</div>
+  </div>
 
-// ── Step 5: Success ────────────────────────────────────────────────────────
+  <!-- STEP 4 -->
+  <div class="spanel" id="s4">
+    <div class="dtitle"><h2>Review &amp; Submit</h2></div>
+    <div class="dsub">Confirm everything looks correct before submitting.</div>
+    <div class="dbody" id="revBody"></div>
+    <div class="dfooter">
+      <button class="btn btn-out" onclick="go(3)">&lsaquo; Previous</button>
+      <button class="btn btn-pri" onclick="submit()">Submit</button>
+    </div>
+    <div class="help-bar">Need help? Contact your pharmacist</div>
+  </div>
 
-const StepSuccess = ({ selected, woundData, onDone }) => {
-  const total = [...selected].reduce((s, l) => s + (woundData[l]?.length || 0), 0);
-  return (
-    <>
-      <div style={{ padding: "0 20px 20px", flex: 1, overflowY: "auto", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ textAlign: "center", padding: "40px 20px" }}>
-          <div style={{
-            width: 72, height: 72, borderRadius: "50%", background: COLORS.lime100,
-            display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px",
-            animation: "popIn 0.5s cubic-bezier(0.175,0.885,0.32,1.275)",
-          }}>
-            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke={COLORS.lime600} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-          </div>
-          <h2 style={{ fontSize: 20, fontWeight: 700, color: COLORS.navy800, marginBottom: 8 }}>Photos Submitted</h2>
-          <p style={{ fontSize: 13.5, color: COLORS.gray500, lineHeight: 1.6, maxWidth: 280, margin: "0 auto" }}>
-            Your wound progress photos have been submitted to your care team for review.
-          </p>
-          <div style={{ background: COLORS.gray50, border: `1px solid ${COLORS.gray200}`, borderRadius: 8, padding: 16, marginTop: 24, textAlign: "left", fontSize: 13, color: COLORS.gray600, lineHeight: 1.8 }}>
-            <strong style={{ color: COLORS.gray700 }}>Total images:</strong> {total}<br />
-            <strong style={{ color: COLORS.gray700 }}>Locations:</strong> {[...selected].join(", ")}<br />
-            <strong style={{ color: COLORS.gray700 }}>Submitted:</strong> {new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })}
-          </div>
-        </div>
-      </div>
-      <Footer><Btn onClick={onDone}>Done</Btn></Footer>
-      <HelpBar />
-      <style>{`@keyframes popIn { 0%{transform:scale(0);opacity:0} 100%{transform:scale(1);opacity:1} }`}</style>
-    </>
-  );
-};
-
-// ── Copy Details Modal ─────────────────────────────────────────────────────
-
-const CopyModal = ({ source, imageCount, onConfirm, onDismiss }) => {
-  const [applyAll, setApplyAll] = useState(false);
-  const showAllOption = imageCount > 2;
-  return (
-    <div style={{
-      position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)",
-      zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center",
-      backdropFilter: "blur(2px)",
-    }}>
-      <div style={{
-        background: COLORS.white, borderRadius: 12, padding: "22px 20px",
-        width: "90%", maxWidth: 320, boxShadow: "0 8px 32px rgba(0,0,0,0.16)",
-      }}>
-        <h3 style={{ fontSize: 15, fontWeight: 700, color: COLORS.navy800, marginBottom: 12 }}>Copy details from Image 1?</h3>
-        <div style={{ background: COLORS.gray50, border: `1px solid ${COLORS.gray200}`, borderRadius: 6, padding: 12, marginBottom: 16, fontSize: 12, color: COLORS.gray600, lineHeight: 1.8 }}>
-          {source.woundName && <><strong>Name:</strong> {source.woundName}<br /></>}
-          {source.date && <><strong>Onset:</strong> {source.date}<br /></>}
-          {source.reopened && <><strong>Reopened:</strong> {source.reopened === "y" ? "Yes" : "No"}<br /></>}
-          {source.details && <><strong>Details:</strong> {source.details}</>}
-        </div>
-        {showAllOption && (
-          <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16, cursor: "pointer", fontSize: 13, color: COLORS.gray700 }}>
-            <input type="checkbox" checked={applyAll} onChange={e => setApplyAll(e.target.checked)} style={{ width: 16, height: 16, accentColor: COLORS.teal500, cursor: "pointer" }} />
-            Apply to all images in this area
-          </label>
-        )}
-        <div style={{ display: "flex", gap: 8 }}>
-          <Btn onClick={() => onConfirm(applyAll)}>Copy Details</Btn>
-          <Btn variant="outline" onClick={onDismiss}>No Thanks</Btn>
-        </div>
+  <!-- STEP 5 -->
+  <div class="spanel" id="s5">
+    <div class="dbody" style="display:flex;align-items:center;justify-content:center">
+      <div class="sc">
+        <div class="si"><svg viewBox="0 0 24 24" fill="none" stroke="#6fa62d" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <h2>Photos Submitted</h2>
+        <p>Your wound progress photos have been submitted to your care team for review.</p>
+        <div class="ss" id="summ"></div>
       </div>
     </div>
-  );
-};
+    <div class="dfooter"><button class="btn btn-pri" onclick="reset()">Done</button></div>
+    <div class="help-bar">Need help? Contact your pharmacist</div>
+  </div>
 
-// ── Alert Modal ────────────────────────────────────────────────────────
-
-const AlertModal = ({ title, message, onDismiss }) => (
-  <div style={{
-    position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)",
-    zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center",
-    backdropFilter: "blur(2px)",
-  }}>
-    <div style={{
-      background: COLORS.white, borderRadius: 12, padding: "22px 20px",
-      width: "90%", maxWidth: 320, boxShadow: "0 8px 32px rgba(0,0,0,0.16)",
-    }}>
-      <h3 style={{ fontSize: 15, fontWeight: 700, color: COLORS.navy800, marginBottom: 12 }}>{title}</h3>
-      <p style={{ fontSize: 13, color: COLORS.gray600, lineHeight: 1.6, marginBottom: 16 }}>{message}</p>
-      <Btn onClick={onDismiss}>OK</Btn>
+  <!-- Copy overlay -->
+  <div class="cov" id="covl">
+    <div class="cdlg">
+      <h3 id="ctitle">Copy details to all images?</h3>
+      <div class="cpv" id="cprev"></div>
+      <label class="cpchk"><input type="checkbox" id="cpAll" checked> Apply to all images in this area</label>
+      <div class="ca">
+        <button class="btn btn-pri" onclick="doCopy()">Copy Details</button>
+        <button class="btn btn-out" onclick="noCopy()">No Thanks</button>
+      </div>
     </div>
   </div>
-);
+</div>
 
-// ── Progress Bar ───────────────────────────────────────────────────────────
+<script>
+let cur=1, maxStep=1, sel=new Set(), wd={}, pCopy=null;
+const h=s=>{const d=document.createElement('div');d.textContent=s||'';return d.innerHTML};
+const ha=s=>(s||'').replaceAll('&','&amp;').replaceAll('"','&quot;');
 
-const ProgressSteps = ({ current }) => (
-  <div style={{ display: "flex", padding: "14px 20px 10px", gap: 6, flexShrink: 0, background: COLORS.white, borderBottom: `1px solid ${COLORS.gray200}` }}>
-    {STEPS.map((label, i) => {
-      const step = i + 1;
-      const done = step < current, active = step === current;
-      return (
-        <div key={step} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 5 }}>
-          <div style={{ width: "100%", height: 4, borderRadius: 2, background: done ? COLORS.lime500 : active ? COLORS.teal500 : COLORS.gray200, transition: "background 0.4s" }} />
-          <span style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.3px", color: done ? COLORS.lime600 : active ? COLORS.teal600 : COLORS.gray400, transition: "color 0.3s" }}>
-            {label}
-          </span>
-        </div>
-      );
-    })}
-  </div>
-);
-
-// ── App ────────────────────────────────────────────────────────────────────
-
-function App() {
-  const [step, setStep] = useState(1);
-  const [selected, setSelected] = useState(new Set());
-  const [woundData, setWoundData] = useState({});
-  const [copyModal, setCopyModal] = useState(null);
-  const [alertModal, setAlertModal] = useState(null);
-
-  const toggleLocation = useCallback(label => {
-    setSelected(prev => {
-      const next = new Set(prev);
-      next.has(label) ? next.delete(label) : next.add(label);
-      return next;
-    });
-  }, []);
-
-  const addFiles = useCallback((locIndex, files) => {
-    const loc = [...selected][locIndex];
-    setWoundData(prev => {
-      const currentCount = (prev[loc] || []).length;
-      const incoming = Array.from(files);
-      if (currentCount + incoming.length > 5) {
-        const remaining = 5 - currentCount;
-        setTimeout(() => setAlertModal({ title: "Image limit reached", message: `Maximum 5 images per area. You can add ${remaining} more image${remaining !== 1 ? "s" : ""}.` }), 0);
-        return prev;
-      }
-      incoming.forEach(file => {
-        if (file.size > 5e6) { setTimeout(() => setAlertModal({ title: "File too large", message: `${file.name} exceeds the 5 MB size limit.` }), 0); return; }
-        const reader = new FileReader();
-        reader.onload = e => {
-          const name = file.name.length > 24 ? file.name.slice(0, 21) + "..." : file.name;
-          const newImg = { ...emptyImage(), file, dataUrl: e.target.result, name, fullName: file.name };
-          setWoundData(d => ({ ...d, [loc]: [...(d[loc] || []), newImg] }));
-        };
-        reader.readAsDataURL(file);
-      });
-      return prev;
-    });
-  }, [selected]);
-
-  const removeImage = useCallback((locIndex, imgIndex) => {
-    const loc = [...selected][locIndex];
-    setWoundData(prev => ({ ...prev, [loc]: prev[loc].filter((_, i) => i !== imgIndex) }));
-  }, [selected]);
-
-  const updateImage = useCallback((locIndex, imgIndex, key, value) => {
-    const loc = [...selected][locIndex];
-    setWoundData(prev => {
-      const imgs = [...prev[loc]];
-      imgs[imgIndex] = { ...imgs[imgIndex], [key]: value };
-      return { ...prev, [loc]: imgs };
-    });
-  }, [selected]);
-
-  const offerCopy = useCallback((locIndex, imgIndex) => {
-    const loc = [...selected][locIndex];
-    const firstImg = woundData[loc]?.[0];
-    if (firstImg && (firstImg.woundName || firstImg.date || firstImg.reopened !== null || firstImg.details)) {
-      setCopyModal({ loc, newIndex: imgIndex, source: firstImg });
-    }
-  }, [selected, woundData]);
-
-  const canProceedStep3 = () => {
-    for (const loc of selected) {
-      const imgs = woundData[loc] || [];
-      if (!imgs.length) return false;
-      if (imgs.some(m => !m.date || m.reopened === null)) return false;
-    }
-    return true;
-  };
-
-  const handleReset = () => {
-    setStep(1); setSelected(new Set()); setWoundData({});
-  };
-
-  const handleClose = () => {
-    if (step === 1 || window.confirm("Exit? Your progress will be lost.")) handleReset();
-  };
-
-  // Sync woundData keys with selection when moving to step 3
-  const goToStep3 = () => {
-    setWoundData(prev => {
-      const next = {};
-      selected.forEach(l => { next[l] = prev[l] || []; });
-      return next;
-    });
-    setStep(3);
-  };
-
-  return (
-    <div style={{ fontFamily: "'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", background: COLORS.gray100, display: "flex", justifyContent: "center", alignItems: "flex-start", minHeight: "100vh" }}>
-      <style>{`
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&display=swap');
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: ${COLORS.gray300}; border-radius: 2px; }
-      `}</style>
-
-      <div style={{
-        width: "100%", maxWidth: 580, minHeight: "100vh",
-        background: COLORS.white, overflow: "hidden", position: "relative",
-        display: "flex", flexDirection: "column",
-        boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
-      }}>
-        {/* Top bar */}
-        <div style={{
-          background: `linear-gradient(135deg, ${COLORS.navy900} 0%, ${COLORS.navy700} 100%)`,
-          padding: "12px 20px", display: "flex", alignItems: "center",
-          justifyContent: "space-between", flexShrink: 0,
-        }}>
-          <span style={{ color: COLORS.white, fontSize: 15, fontWeight: 600 }}>Wound Tracking</span>
-          <button onClick={handleClose} style={{
-            width: 28, height: 28, border: "none", borderRadius: "50%",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 16, color: "rgba(255,255,255,0.7)", cursor: "pointer",
-            background: "rgba(255,255,255,0.1)",
-          }}>×</button>
-        </div>
-
-        {step < 5 && <ProgressSteps current={step} />}
-
-        {/* Steps */}
-        {step === 1 && <StepTips onNext={() => setStep(2)} />}
-        {step === 2 && <StepLocation selected={selected} onToggle={toggleLocation} onBack={() => setStep(1)} onNext={goToStep3} />}
-        {step === 3 && (
-          <>
-            <div style={{ padding: "16px 20px 4px", flexShrink: 0 }}>
-              <h2 style={{ fontSize: 20, fontWeight: 700, color: COLORS.navy800 }}>Upload &amp; Details</h2>
-            </div>
-            <p style={{ padding: "4px 20px 14px", fontSize: 13, color: COLORS.gray500, lineHeight: 1.4 }}>
-              Upload at least one image per location and provide wound details.
-            </p>
-            <div style={{ padding: "0 20px 20px", flex: 1, overflowY: "auto" }}>
-              {[...selected].map((loc, li) => (
-                <LocationBlock
-                  key={loc} location={loc} images={woundData[loc] || []} locIndex={li}
-                  onChange={updateImage} onAddFiles={addFiles} onRemove={removeImage}
-                  onOfferCopy={offerCopy}
-                />
-              ))}
-            </div>
-            <Footer>
-              <Btn variant="outline" onClick={() => setStep(2)}>‹ Previous</Btn>
-              <Btn disabled={!canProceedStep3()} onClick={() => setStep(4)}>Next ›</Btn>
-            </Footer>
-            <HelpBar />
-          </>
-        )}
-        {step === 4 && <StepReview selected={selected} woundData={woundData} onBack={() => setStep(3)} onSubmit={() => setStep(5)} />}
-        {step === 5 && <StepSuccess selected={selected} woundData={woundData} onDone={handleReset} />}
-
-        {/* Copy modal */}
-        {copyModal && (
-          <CopyModal
-            source={copyModal.source}
-            imageCount={(woundData[copyModal.loc] || []).length}
-            onConfirm={(applyAll) => {
-              const { loc, newIndex, source } = copyModal;
-              const copyFields = { woundName: source.woundName, date: source.date, reopened: source.reopened, details: source.details };
-              setWoundData(prev => {
-                const imgs = [...prev[loc]];
-                if (applyAll) {
-                  for (let i = 1; i < imgs.length; i++) {
-                    imgs[i] = { ...imgs[i], ...copyFields };
-                  }
-                } else {
-                  imgs[newIndex] = { ...imgs[newIndex], ...copyFields };
-                }
-                return { ...prev, [loc]: imgs };
-              });
-              setCopyModal(null);
-            }}
-            onDismiss={() => setCopyModal(null)}
-          />
-        )}
-
-        {/* Alert modal */}
-        {alertModal && (
-          <AlertModal
-            title={alertModal.title}
-            message={alertModal.message}
-            onDismiss={() => setAlertModal(null)}
-          />
-        )}
-      </div>
-    </div>
-  );
+function go(n){
+  const p=document.querySelector('.spanel.on');
+  if(p)p.classList.remove('on','rev');
+  const back=n<cur;cur=n;
+  if(cur>maxStep)maxStep=cur;
+  const el=document.getElementById('s'+n);
+  if(back)el.classList.add('rev');
+  el.classList.add('on');
+  document.querySelectorAll('.progress-step').forEach(e=>{
+    const s=+e.dataset.step;e.classList.remove('active','done','visited');
+    if(s<cur)e.classList.add('done');
+    else if(s===cur)e.classList.add('active');
+    else if(s<=maxStep)e.classList.add('visited');
+  });
+  document.getElementById('psteps').style.display=cur===5?'none':'';
+  if(n===3)buildUp();if(n===4)buildRev();
+  const b=el.querySelector('.dbody');if(b)b.scrollTop=0;
 }
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(<App />);
-  </script>
+function goStep(el){const s=+el.dataset.step;if(el.classList.contains('done')||el.classList.contains('visited'))go(s);}
+function confirmClose(){if(cur===1||confirm('Exit? Your progress will be lost.'))reset();}
+function reset(){
+  sel.clear();wd={};
+  document.querySelectorAll('.wp.sel').forEach(p=>p.classList.remove('sel'));
+  updCnt();cur=1;maxStep=1;
+  document.querySelectorAll('.spanel').forEach(p=>p.classList.remove('on','rev'));
+  document.getElementById('s1').classList.add('on');
+  document.querySelectorAll('.progress-step').forEach(e=>{
+    e.classList.remove('active','done','visited');if(+e.dataset.step===1)e.classList.add('active');
+  });
+  document.getElementById('psteps').style.display='';
+}
+
+// Body map
+document.querySelectorAll('.wp').forEach(p=>{
+  p.addEventListener('click',()=>{
+    const l=p.dataset.location;if(!l)return;
+    p.classList.toggle('sel');
+    sel.has(l)?sel.delete(l):sel.add(l);updCnt();
+  });
+});
+function updCnt(){
+  const n=sel.size,el=document.getElementById('selcnt'),b=document.getElementById('s2n');
+  if(!n){el.innerHTML='<span style="color:var(--gray-400)">Tap a location to begin</span>';b.disabled=true;b.className='btn btn-off';}
+  else{el.innerHTML='<strong>'+n+'</strong> location'+(n>1?'s':'')+' selected';b.disabled=false;b.className='btn btn-pri';}
+}
+updCnt();
+
+// Upload
+function buildUp(){
+  sel.forEach(l=>{if(!wd[l])wd[l]=[];});
+  Object.keys(wd).forEach(l=>{if(!sel.has(l))delete wd[l];});
+  let o='';const locs=[...sel];
+  locs.forEach((l,li)=>{
+    const im=wd[l]||[],has=im.length>0;
+    const ok=has&&im.every(m=>m.re!==null);
+    const badge=ok?'Complete':(has?im.length+' img':'No images');
+    o+='<div class="wlb"><div class="wlh"><span class="ld"></span>'+h(l)
+      +'<span class="ls '+(ok?'ok':'inc')+'">'+badge+'</span></div><div class="wlc">'
+      +'<div class="uz" onclick="tUp('+li+')"'
+      +' ondragover="event.preventDefault();this.classList.add(\'dov\')"'
+      +' ondragleave="this.classList.remove(\'dov\')"'
+      +' ondrop="hDrop(event,'+li+');this.classList.remove(\'dov\')">'
+      +'<div class="ui">&#x1F4F7;</div><div class="ul">+ Upload Images</div>'
+      +'<div class="uh">Tap to browse or drag &amp; drop</div></div>'
+      +'<input type="file" id="fi'+li+'" multiple accept="image/*" style="display:none" onchange="hFiles(this.files,'+li+')">';
+    if(has){
+      o+='<div class="ts">';
+      im.forEach((m,mi)=>{o+='<div class="th"><img src="'+m.du+'" alt="'+ha(m.nm)+'"><button class="rb" onclick="rmImg('+li+','+mi+')">&times;</button></div>';});
+      o+='</div>';
+      im.forEach((m,mi)=>{
+        const df=m.re!==null?'f':(m.wn?'p':'e');
+        o+='<div class="idb"><button class="idt" aria-expanded="true" onclick="tgl(this)">'
+          +'<span class="ds '+df+'"></span>Image '+(mi+1)+': '+h(m.nm)
+          +'<span class="dc">&#9660;</span></button>'
+          +'<div class="idf op">'
+          +'<div class="fr"><label class="fl">Wound Name <span class="ot">(optional)</span></label>'
+          +'<input type="text" placeholder="e.g. Left shoulder wound" value="'+ha(m.wn)+'" onfocus="maybeCp('+li+','+mi+')" onchange="ud('+li+','+mi+',\'wn\',this.value)"></div>'
+          +'<div class="fr"><label class="fl">Onset Date <span class="ot">(optional)</span></label>'
+          +'<input type="date" value="'+ha(m.dt)+'" onfocus="maybeCp('+li+','+mi+')" onchange="ud('+li+','+mi+',\'dt\',this.value)"></div>'
+          +'<div class="fr"><label class="fl">Has this wound reopened? *</label><div class="rg">'
+          +'<label><input type="radio" name="r'+li+'-'+mi+'" value="y"'+(m.re==='y'?' checked':'')+' onfocus="maybeCp('+li+','+mi+')" onchange="ud('+li+','+mi+',\'re\',\'y\')">Yes</label>'
+          +'<label><input type="radio" name="r'+li+'-'+mi+'" value="n"'+(m.re==='n'?' checked':'')+' onfocus="maybeCp('+li+','+mi+')" onchange="ud('+li+','+mi+',\'re\',\'n\')">No</label>'
+          +'</div></div>'
+          +'<div class="fr"><label class="fl">Additional Details <span class="ot">(optional)</span></label>'
+          +'<textarea placeholder="Any notes..." onfocus="maybeCp('+li+','+mi+')" onchange="ud('+li+','+mi+',\'det\',this.value)">'+h(m.det)+'</textarea></div>'
+          +'</div></div>';
+      });
+    }
+    if(!has)o+='<div class="vm">&#9888; At least 1 image required</div>';
+    o+='</div></div>';
+  });
+  document.getElementById('upBody').innerHTML=o;chk3();
+}
+function tUp(i){document.getElementById('fi'+i).click();}
+function hFiles(fs,li){
+  const l=[...sel][li];if(!wd[l])wd[l]=[];const a=wd[l];
+  [...fs].forEach(f=>{
+    if(f.size>5e6){alert(f.name+' exceeds 5 MB.');return;}
+    const r=new FileReader();
+    r.onload=e=>{
+      a.push({f,du:e.target.result,nm:f.name.length>24?f.name.slice(0,21)+'...':f.name,fn:f.name,wn:'',dt:'',re:null,det:''});
+      if(a.length>1&&a[0].wn)offerCp(li,a.length-1);
+      buildUp();
+    };r.readAsDataURL(f);
+  });
+}
+function hDrop(e,i){e.preventDefault();hFiles(e.dataTransfer.files,i);}
+function rmImg(li,mi){wd[[...sel][li]].splice(mi,1);buildUp();}
+function tgl(b){const o=b.getAttribute('aria-expanded')==='true';b.setAttribute('aria-expanded',String(!o));b.nextElementSibling.classList.toggle('op');}
+function ud(li,mi,k,v){wd[[...sel][li]][mi][k]=v;chk3();}
+function chk3(){
+  let ok=true;
+  sel.forEach(l=>{const im=wd[l]||[];if(!im.length){ok=false;return;}im.forEach(m=>{if(m.re===null)ok=false;});});
+  const b=document.getElementById('s3n');b.disabled=!ok;b.className=ok?'btn btn-pri':'btn btn-off';
+}
+function valGo(){
+  let issue=null;
+  sel.forEach(l=>{const im=wd[l]||[];
+    if(!issue&&!im.length)issue=l+': no images';
+    im.forEach((m,i)=>{if(!issue&&m.re===null)issue=l+' #'+(i+1)+': reopened required';});
+  });
+  if(issue){alert('Please fix: '+issue);return;}go(4);
+}
+function maybeCp(li,mi){
+  if(mi===0)return;
+  const l=[...sel][li],imgs=wd[l];
+  if(!imgs||!imgs[0]||!imgs[mi])return;
+  const src=imgs[0],tgt=imgs[mi];
+  if(tgt.cpOff||tgt.re!==null)return;
+  if(!src.wn&&!src.dt&&src.re===null&&!src.det)return;
+  offerCp(li,mi);
+}
+function offerCp(li,mi){
+  const l=[...sel][li],s=wd[l][0];pCopy={li,mi,l};
+  document.getElementById('ctitle').textContent='Copy details to all images?';
+  let p='';
+  if(s.wn)p+='<strong>Name:</strong> '+h(s.wn)+'<br>';
+  if(s.dt)p+='<strong>Onset:</strong> '+h(s.dt)+'<br>';
+  if(s.re)p+='<strong>Reopened:</strong> '+(s.re==='y'?'Yes':'No')+'<br>';
+  if(s.det)p+='<strong>Details:</strong> '+h(s.det);
+  document.getElementById('cprev').innerHTML=p;
+  document.getElementById('covl').classList.add('vis');
+}
+function doCopy(){
+  if(!pCopy)return;const{l,mi}=pCopy,s=wd[l][0];
+  const allInArea=document.getElementById('cpAll').checked;
+  if(allInArea){
+    wd[l].forEach((t,i)=>{if(i>0){t.wn=s.wn;t.dt=s.dt;t.re=s.re;t.det=s.det;t.cpOff=true;}});
+  }else{
+    const t=wd[l][mi];t.wn=s.wn;t.dt=s.dt;t.re=s.re;t.det=s.det;t.cpOff=true;
+  }
+  pCopy=null;document.getElementById('covl').classList.remove('vis');buildUp();
+}
+function noCopy(){
+  if(pCopy){
+    const{l,mi}=pCopy;
+    const allInArea=document.getElementById('cpAll').checked;
+    if(allInArea){
+      wd[l].forEach((t,i)=>{if(i>0)t.cpOff=true;});
+    }else{
+      wd[l][mi].cpOff=true;
+    }
+  }
+  pCopy=null;document.getElementById('covl').classList.remove('vis');
+}
+
+// Review
+function buildRev(){
+  let o='';
+  sel.forEach(l=>{
+    const im=wd[l]||[];
+    o+='<div class="rlb"><div class="rlh"><h3>'+h(l)+'</h3><span class="ric">'+im.length+' image'+(im.length>1?'s':'')+'</span></div>';
+    im.forEach((m,i)=>{
+      const onset=m.dt?fmtD(m.dt):'—';
+      o+='<div class="rc"><div class="rtb"><img src="'+m.du+'" alt=""></div><div class="rd">'
+        +'<div class="rn">Image '+(i+1)+': '+h(m.nm)+'</div>'
+        +'<span class="rfl">Name</span> '+(h(m.wn)||'—')+'<br>'
+        +'<span class="rfl">Onset</span> '+onset+'<br>'
+        +'<span class="rfl">Reopened</span> '+(m.re==='y'?'Yes':'No')+'<br>'
+        +'<span class="rfl">Details</span> '+(h(m.det)||'—')
+        +'</div></div>';
+    });
+    o+='</div>';
+  });
+  document.getElementById('revBody').innerHTML=o;
+}
+function fmtD(s){
+  if(!s)return'—';const d=new Date(s+'T00:00:00');
+  if(isNaN(d))return s;
+  return(d.getMonth()+1+'').padStart(2,'0')+'/'+
+        (d.getDate()+'').padStart(2,'0')+'/'+
+        (d.getFullYear()+'').slice(-2);
+}
+
+// Submit
+function submit(){
+  let t=0;const n=[];
+  sel.forEach(l=>{t+=(wd[l]||[]).length;n.push(l);});
+  document.getElementById('summ').innerHTML=
+    '<strong>Total images:</strong> '+t+'<br>'+
+    '<strong>Locations:</strong> '+n.map(h).join(', ')+'<br>'+
+    '<strong>Submitted:</strong> '+new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  go(5);
+}
+</script>
 </body>
 </html>
