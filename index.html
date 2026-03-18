@@ -652,7 +652,7 @@ function buildUp(){
       +' ondrop="hDrop(event,'+li+');this.classList.remove(\'dov\')">'
       +'<div class="ui">&#x1F4F7;</div><div class="ul">+ Upload Images</div>'
       +'<div class="uh">Tap to browse or drag &amp; drop</div></div>'
-      +'<input type="file" id="fi'+li+'" multiple accept="image/*" style="display:none" onchange="hFiles(this.files,'+li+')">';
+      +'<input type="file" id="fi'+li+'" multiple accept=".jpg,.jpeg,.png,.heic,.heif,.webp" style="display:none" onchange="hFiles(this.files,'+li+')">';
     if(has){
       o+='<div class="ts">';
       im.forEach((m,mi)=>{o+='<div class="th"><img src="'+m.du+'" alt="'+ha(m.nm)+'"><button class="rb" onclick="rmImg('+li+','+mi+')">&times;</button></div>';});
